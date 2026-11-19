@@ -939,6 +939,12 @@ ETC
           </div>
 
           <div class="space-y-1 text-[11px]">
+            <button onclick="window.AXION&&window.AXION.open('HOME')" class="w-full p-1.5 rounded-lg border border-cyan-400/60 flex items-center gap-1.5 text-left shadow-lg" style="background:linear-gradient(135deg,#0b1a38,#0a1226)">
+              <span class="inline-flex items-center justify-center rounded-md border border-slate-600 font-black text-cyan-300" style="width:26px;height:26px;font-size:14px;background:#16233f;flex:none">A</span>
+              <div class="flex-1 min-w-0"><div class="font-black text-cyan-300 tracking-wider">AXION CORE</div><div class="text-[9px] text-slate-400">統合ホームを開く</div></div>
+              <i class="fa-solid fa-arrow-up-right-from-square text-cyan-400 text-xs"></i>
+            </button>
+
             <button onclick="openSettingsModal()" class="w-full bg-slate-900 hover:bg-slate-800 p-1.5 rounded-lg border border-cyan-500/40 flex items-center gap-1.5 text-left shadow-lg">
               <i class="fa-solid fa-gear text-cyan-400 text-xs"></i>
               <div>
@@ -953,6 +959,11 @@ ETC
                 <div class="font-bold text-slate-200">車両ステータス</div>
                 <div class="text-[9px] text-slate-500">空気圧・バッテリー状況</div>
               </div>
+            </button>
+
+            <button onclick="window.AXION&&window.AXION.open('WEATHER')" class="axMenuWxCard walk-hide w-full bg-slate-900 hover:bg-slate-800 p-1.5 rounded-lg border border-cyan-500/40 flex items-center gap-1.5 text-left">
+              <i class="axMenuWxIc fa-solid fa-cloud-sun text-cyan-400 text-xs"></i>
+              <div><div class="font-bold text-cyan-300">AXION WEATHER</div><div class="axMenuWxTxt text-[9px] text-slate-400">取得中…</div></div>
             </button>
 
             <button onclick="toggleSidePanel('visual')" class="walk-hide w-full bg-slate-900 hover:bg-slate-800 p-1.5 rounded-lg border border-orange-500/40 flex items-center gap-1.5 text-left">
@@ -1055,7 +1066,7 @@ ETC
             <button onclick="cancelRouteSelection()" class="text-slate-300 hover:text-white text-[10px] px-1.5 py-1 rounded-lg bg-slate-800 border border-slate-700 flex items-center gap-1 active:scale-95">
               <i class="fa-solid fa-arrow-left"></i> 戻る
             </button>
-            <span class="text-xs font-black text-cyan-400"><i class="fa-solid fa-route mr-1"></i>ルート選択</span><span class="reroute-badge hidden items-center gap-0.5 text-[9px] font-black text-amber-300 bg-amber-950 border border-amber-500/60 px-1 py-0.5 rounded leading-none"><span class="inline-block animate-spin">🌀</span>再探索中</span>
+            <span class="text-xs font-black text-cyan-400"><i class="fa-solid fa-route mr-1"></i>ルート選択</span><span class="reroute-badge hidden items-center gap-0.5 text-[9px] font-black text-amber-300 bg-amber-950 border border-amber-500/60 px-1 py-0.5 rounded leading-none"><span class="inline-block animate-spin"><i class="fa-solid fa-rotate"></i></span>再探索中</span>
           </div>
           <div id="routeModeList" class="flex flex-col gap-1"></div>
           <div id="routeModeInfo" class="text-[9px] text-slate-300 leading-tight bg-slate-900 border border-slate-800 rounded-lg p-1.5"></div>
@@ -1073,7 +1084,7 @@ ETC
             <button onclick="toggleSidePanel('menu')" class="text-slate-300 hover:text-white text-[10px] px-1.5 py-1 rounded-lg bg-slate-800 border border-slate-700 flex items-center gap-1 active:scale-95">
               <i class="fa-solid fa-arrow-left"></i> 戻る
             </button>
-            <span class="text-xs font-black text-cyan-400">高速道路 案内</span><span class="reroute-badge hidden items-center gap-0.5 text-[9px] font-black text-amber-300 bg-amber-950 border border-amber-500/60 px-1 py-0.5 rounded leading-none"><span class="inline-block animate-spin">🌀</span>再探索中</span>
+            <span class="text-xs font-black text-cyan-400">高速道路 案内</span><span class="reroute-badge hidden items-center gap-0.5 text-[9px] font-black text-amber-300 bg-amber-950 border border-amber-500/60 px-1 py-0.5 rounded leading-none"><span class="inline-block animate-spin"><i class="fa-solid fa-rotate"></i></span>再探索中</span>
           </div>
           <div class="bg-slate-900 border border-slate-700 rounded-lg p-1.5">
             <div class="flex items-center gap-1.5">
@@ -1085,6 +1096,7 @@ ETC
             <div id="hwRoadInfo" class="text-[9px] text-slate-400 leading-tight"></div>
             <div id="hwJamInfo" class="text-[9px] text-red-400 font-bold leading-tight"></div>
           </div>
+          <div id="axHwBox" class="hidden rounded-lg overflow-hidden" style="background:#000;border:1px solid #555"><div id="axHwList"></div></div>
           <div id="hwList" class="flex-1 flex flex-col-reverse justify-start gap-0 overflow-hidden"></div>
         </div>
 
@@ -1195,7 +1207,7 @@ ETC
               <i class="fa-solid fa-arrow-left"></i> 戻る
             </button>
             <span id="turnTitle" class="text-xs font-black text-cyan-400 truncate">曲がります</span>
-            <span class="reroute-badge hidden items-center gap-0.5 text-[9px] font-black text-amber-300 bg-amber-950 border border-amber-500/60 px-1 py-0.5 rounded leading-none"><span class="inline-block animate-spin">🌀</span>再探索中</span>
+            <span class="reroute-badge hidden items-center gap-0.5 text-[9px] font-black text-amber-300 bg-amber-950 border border-amber-500/60 px-1 py-0.5 rounded leading-none"><span class="inline-block animate-spin"><i class="fa-solid fa-rotate"></i></span>再探索中</span>
           </div>
           <div class="bg-black border border-slate-600 rounded-lg overflow-hidden flex items-stretch">
             <div class="px-2 py-1 flex flex-col justify-center min-w-0 flex-1">
@@ -1549,7 +1561,7 @@ ETC
           </div>
           
           <div id="sonarStatusTitle" class="text-red-500 font-extrabold text-xs tracking-wider animate-pulse my-0.5">
-            ⚠️ 障害物が近づいています ⚠️
+            <i class="fa-solid fa-triangle-exclamation"></i> 障害物が近づいています <i class="fa-solid fa-triangle-exclamation"></i>
           </div>
 
           <div class="relative w-32 h-40 flex items-center justify-center my-auto">
@@ -1663,7 +1675,7 @@ ETC
           <div class="text-center bg-slate-900 px-4 py-1 rounded-full border border-slate-800 text-slate-200 text-xs font-sans font-bold">
             Sport Active
           </div>
-          <div>🛢 37 km</div>
+          <div><i class="fa-solid fa-gas-pump"></i> 37 km</div>
         </div>
 
         <button onclick="exitFullMeterMode()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-5 py-1.5 rounded-xl text-xs font-bold border border-slate-700 shadow mb-1">
@@ -1682,7 +1694,7 @@ ETC
               <i class="fa-solid fa-key text-4xl text-cyan-300 rotate-[45deg]"></i>
             </div>
           </div>
-          <div class="text-xs font-bold text-cyan-400 animate-bounce" id="ignitionHint">⚡ クリックしてエンジン始動 ⚡</div>
+          <div class="text-xs font-bold text-cyan-400 animate-bounce" id="ignitionHint">クリックしてエンジン始動</div>
         </div>
       </div>
 
@@ -6115,7 +6127,7 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
       playClassicIgnitionSound();
       const slot = document.getElementById('keySlot');
       slot.style.transform = 'rotate(45deg)';
-      document.getElementById('ignitionHint').innerText = "⚡ エンジン始動完了！";
+      document.getElementById('ignitionHint').innerText = "エンジン始動完了！";
       
       setTimeout(() => {
         document.getElementById('keyIgnitionOverlay').classList.add('hidden');
@@ -6268,7 +6280,7 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
         const color = pct === null ? 'slate' : (pct <= 15 ? 'red' : pct <= 30 ? 'amber' : 'green');
         const txtCls = { slate: 'text-slate-400', red: 'text-red-400', amber: 'text-amber-400', green: 'text-green-400' }[color];
         const barCls = { slate: 'bg-slate-500', red: 'bg-red-500', amber: 'bg-amber-500', green: 'bg-green-500' }[color];
-        bPct.textContent = pct === null ? '--%' : (charging ? '⚡' : '') + pct + '%';
+        bPct.textContent = pct === null ? '--%' : (charging ? '+' : '') + pct + '%';
         bPct.className = 'font-black font-mono ' + txtCls;
         bBar.style.width = (pct === null ? 0 : pct) + '%';
         bBar.className = 'h-full ' + barCls;
@@ -10957,7 +10969,7 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
       toggleSidePanel(turnPanel.prevMode && turnPanel.prevMode !== 'turn' ? turnPanel.prevMode : 'menu');
     }
 
-    // 道を間違えて再探索している間、右側の各パネルの見出しに「🌀再探索中」を出す
+    // 道を間違えて再探索している間、右側の各パネルの見出しに「再探索中」を出す
     function setReroutingIndicator(on) {
       document.querySelectorAll('.reroute-badge').forEach(el => {
         el.classList.toggle('hidden', !on);
@@ -11214,7 +11226,7 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
 
     function directionArrow(maneuver) {
       if (!maneuver) return '↑';
-      if (maneuver.type === 'arrive') return '🏁';
+      if (maneuver.type === 'arrive') return '◎';
       if (maneuver.type === 'roundabout' || maneuver.type === 'rotary') return '↻';
       switch (maneuver.modifier) {
         case 'left': return '↰';
@@ -11859,7 +11871,7 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
     async function rerouteFromCurrentPosition() {
       if (isRerouting || !destMarker || !userPos) return;
       isRerouting = true;
-      setReroutingIndicator(true);   // 右側パネルに「🌀再探索中」を出す
+      setReroutingIndicator(true);   // 右側パネルに「再探索中」を出す
       lastRerouteAt = Date.now();
       try {
         playBeepSound('navChime');
@@ -16341,7 +16353,7 @@ window.shoCfg={get:function(k){try{var o=JSON.parse(localStorage.getItem('shoCar
       +'<div id="tgList" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;margin-top:6px"></div>';
     document.body.appendChild(g);
     function $(id){return document.getElementById(id);}
-    function head(){$('tgHd').textContent='💡 豆知識一覧 見た '+lsGet('shoTipSeen').length+'/'+TIPS.length+'・★'+lsGet('shoTipFavs').length;$('tgStar').textContent=lsGet('shoTipFavs').indexOf(cur)<0?'☆':'★';}
+    function head(){$('tgHd').textContent='豆知識一覧 見た '+lsGet('shoTipSeen').length+'/'+TIPS.length+'・★'+lsGet('shoTipFavs').length;$('tgStar').textContent=lsGet('shoTipFavs').indexOf(cur)<0?'☆':'★';}
     function list(){var fv=lsGet('shoTipFavs'),sn=lsGet('shoTipSeen');$('tgList').innerHTML=TIPS.map(function(t,i){if(onlyFav&&fv.indexOf(i)<0)return '';return '<div data-i="'+i+'" style="display:flex;gap:8px;padding:9px 6px;border-bottom:1px solid #1e293b;font-size:13px"><span style="width:2.2em;color:#facc15;font-weight:800">'+(i+1)+'</span><span style="flex:1">'+t+'</span><span>'+(fv.indexOf(i)>=0?'★':'')+(sn.indexOf(i)>=0?'✓':'')+'</span></div>';}).join('');}
     function show(i){cur=i;shoTipVisual(i,TIPS[i],$('tgPrev'));$('tgTxt').textContent=(i+1)+'番 '+TIPS[i];head();}
     $('tgList').onclick=function(e){var r=e.target.closest('[data-i]');if(r)show(+r.getAttribute('data-i'));};
@@ -16365,7 +16377,7 @@ window.shoCfg={get:function(k){try{var o=JSON.parse(localStorage.getItem('shoCar
     if(lastG&&lastG!=='P'&&g==='P'&&typeof userPos!=='undefined'&&userPos){try{localStorage.setItem('shoParked',JSON.stringify({lat:userPos.lat,lon:userPos.lon,t:Date.now()}));}catch(e){}}
     lastG=g;
     if(!restDone&&drvSec>=7200&&shoCfg.get('rest')!==false){restDone=true;var m='運転を始めて2時間たちました。次のサービスエリアかパーキングエリアで休憩しましょう。';say(m);
-      var n=document.createElement('div');n.style.cssText='position:fixed;left:50%;top:max(12px,env(safe-area-inset-top));transform:translateX(-50%);z-index:9950;background:#facc15;color:#111;font-weight:800;padding:12px 16px;border-radius:14px;max-width:90vw';n.textContent='☕ '+m;document.body.appendChild(n);setTimeout(function(){n.remove();},12000);}
+      var n=document.createElement('div');n.style.cssText='position:fixed;left:50%;top:max(12px,env(safe-area-inset-top));transform:translateX(-50%);z-index:9950;background:#facc15;color:#111;font-weight:800;padding:12px 16px;border-radius:14px;max-width:90vw';n.textContent=m;document.body.appendChild(n);setTimeout(function(){n.remove();},12000);}
   }catch(e){}},2000);
 
   var O=document.getElementById('powerOffOverlay'),busy=false,T=[],powerOffFailsafe=0;
@@ -16636,5 +16648,1303 @@ window.shoCfg={get:function(k){try{var o=JSON.parse(localStorage.getItem('shoCar
   window.addEventListener('orientationchange',function(){ if(active) place(); });
 })();
 </script>
+<!-- ===== AXION CORE integration layer (additive; existing code untouched) ===== -->
+<style id="axion-core-css">
+#axLaunch{position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);right:8px;z-index:99990;background:rgba(10,18,32,.78);backdrop-filter:blur(12px);color:#7cc4ff;border:1px solid rgba(80,160,255,.5);border-radius:14px;padding:8px 12px;font:800 12px/1 system-ui,sans-serif;letter-spacing:.12em;min-height:40px}
+#axBadge{background:#ef4444;color:#fff;border-radius:9px;padding:1px 5px;margin-left:6px;font-size:10px;display:none}
+#axRoot{position:fixed;inset:0;z-index:99995;background:radial-gradient(1200px 700px at 20% -10%,#10213d 0,#06090f 60%);color:#e6eefb;font-family:system-ui,"Hiragino Sans","Noto Sans JP",sans-serif;display:none;flex-direction:column;opacity:0;transition:opacity .25s;padding-top:env(safe-area-inset-top,0px)}
+#axRoot.on{display:flex}#axRoot.vis{opacity:1}
+#axRoot.light{background:#eef3fa;color:#0b1220}
+#axTop{display:flex;align-items:center;gap:8px;padding:10px 14px}
+#axTop b{letter-spacing:.2em;color:#7cc4ff;font-size:14px}
+#axTop button{margin-left:auto;background:rgba(255,255,255,.08);color:inherit;border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:10px 16px;font-weight:800;min-height:44px}
+#axBody{flex:1;overflow:auto;padding:6px 14px 14px;-webkit-overflow-scrolling:touch}
+#axNav{display:flex;overflow-x:auto;gap:6px;padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px));background:rgba(0,0,0,.45);border-top:1px solid rgba(80,160,255,.25)}
+#axNav button{flex:0 0 auto;min-width:74px;min-height:52px;border-radius:14px;background:transparent;color:#9fb2cc;border:1px solid transparent;font:700 10px system-ui;letter-spacing:.06em;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
+#axNav button span{font-size:20px}#axNav button.on{color:#fff;background:rgba(60,140,255,.22);border-color:rgba(100,180,255,.6)}
+.axg{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.axc{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(14px);border-radius:18px;padding:14px;animation:axIn .3s}
+#axRoot.light .axc{background:#fff;border-color:#cfd9e8}
+@keyframes axIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.axc h3{font-size:11px;letter-spacing:.16em;color:#7cc4ff;margin:0 0 8px;font-weight:800}
+.axbig{font-size:56px;font-weight:200;letter-spacing:.04em;line-height:1}.axm{font-size:26px;font-weight:700}.axs{font-size:12px;opacity:.7;margin-top:2px}
+.axt{display:inline-block;font-size:10px;font-weight:800;border-radius:6px;padding:2px 6px;margin-right:6px}
+.axt.live{background:#065f46;color:#a7f3d0}.axt.demo{background:#78350f;color:#fde68a}.axt.off{background:#374151;color:#d1d5db}
+.axb{background:linear-gradient(180deg,#2b6fd6,#1b4fa3);color:#fff;border:0;border-radius:12px;padding:11px 16px;font-weight:800;min-height:44px;margin:3px 3px 3px 0}
+.axb.g{background:rgba(255,255,255,.1)}
+.axr{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.08);font-size:14px}
+.axh{display:flex;gap:8px;overflow-x:auto}.axh>div{flex:0 0 64px;text-align:center;font-size:12px}
+#axRoot input,#axRoot select{background:rgba(255,255,255,.08);color:inherit;border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:9px;min-height:40px;max-width:100%}
+#axRoot select option{color:#000}
+.axal{border-left:4px solid #3b82f6;padding:8px 10px;margin:6px 0;background:rgba(255,255,255,.05);border-radius:8px;font-size:13px}
+.axal.warn{border-color:#f59e0b}.axal.crit{border-color:#ef4444}.axal.ack{opacity:.45}
+@media(max-width:600px){.axbig{font-size:44px}}
+</style>
+<button id="axLaunch" type="button" aria-label="AXION CORE">AXION CORE<span id="axBadge">0</span></button>
+<div id="axRoot" role="dialog" aria-label="AXION CORE"><div id="axTop"><svg class="axlogo" viewBox="0 0 64 40" width="40" height="25"><path d="M2 38L26 2h12l24 36H49L32 13 21 38z" fill="#fff"/></svg><b>AXION CORE</b><span id="axTitle"></span><span id="axNet" class="axt live">ONLINE</span><span style="flex:1"></span><span id="axTopGps"></span><span id="axTopClk"></span><button id="axClose" type="button">NAVI</button></div><div id="axBody"></div><div id="axNav"></div></div>
+<script id="axion-core-js">
+(function(){
+"use strict";
+var KEY="axion_core_v1";
+var D={menuWx:true,launcher:false,theme:"dark",vol:70,voice:true,notify:true,refresh:10,demo:true,region:"",rLat:"",rLon:"",useGps:true,
+ veh:{odo:"",kmpl:"",tank:"",batt:"",tire:"",insp:"",shaken:""},hist:[],alerts:[]};
+var S;try{S=Object.assign({},D,JSON.parse(localStorage.getItem(KEY)||"{}"))}catch(e){S=Object.assign({},D)}
+S.veh=Object.assign({},D.veh,S.veh||{});S.hist=S.hist||[];S.alerts=S.alerts||[];
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){alert("AXION: 保存に失敗しました")}}
+var $=function(i){return document.getElementById(i)};
+var P={home:'<path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/>',cloud:'<path d="M7 18h10a4 4 0 0 0 .5-8A6 6 0 0 0 6 11a3.5 3.5 0 0 0 1 7z"/>',nav:'<path d="M12 2l7 19-7-4-7 4z"/>',car:'<path d="M4 16v-5l2-5h12l2 5v5"/><path d="M3 11h18"/><path d="M6 16v3M18 16v3"/>',music:'<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',spark:'<path d="M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2z"/>',bell:'<path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 21h4"/>',gear:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>',
+prev:'<path d="M6 5v14"/><path d="M19 5L9 12l10 7z" fill="currentColor"/>',next:'<path d="M18 5v14"/><path d="M5 5l10 7-10 7z" fill="currentColor"/>',play:'<path d="M7 4l13 8-13 8z" fill="currentColor"/>',pause:'<path d="M7 4h4v16H7zM13 4h4v16h-4z" fill="currentColor"/>',playpause:'<path d="M3 5l8 7-8 7z" fill="currentColor"/><path d="M14 5h3v14h-3zM19 5h2v14h-2z" fill="currentColor"/>',
+shuffle:'<path d="M3 6h4l10 12h4M3 18h4l3-4M14 8l3-2h4"/><path d="M19 3l2 3-2 3M19 15l2 3-2 3"/>',repeat:'<path d="M4 11V9a3 3 0 0 1 3-3h13M20 6l-3-3M20 6l-3 3"/><path d="M20 13v2a3 3 0 0 1-3 3H4M4 18l3-3M4 18l3 3"/>',repeat1:'<path d="M4 11V9a3 3 0 0 1 3-3h13M20 6l-3-3M20 6l-3 3"/><path d="M20 13v2a3 3 0 0 1-3 3H4M4 18l3-3M4 18l3 3"/><path d="M11 10l1.5-1v6"/>',
+star:'<path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3l-5.5 2.9 1-6.2L3 9.6l6.2-.9z"/>',starf:'<path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3l-5.5 2.9 1-6.2L3 9.6l6.2-.9z" fill="currentColor"/>',trash:'<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',plus:'<path d="M12 5v14M5 12h14"/>',close:'<path d="M6 6l12 12M18 6L6 18"/>',up:'<path d="M12 19V5M6 11l6-6 6 6"/>',down:'<path d="M12 5v14M6 13l6 6 6-6"/>',mic:'<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',back:'<path d="M19 12H5M11 6l-6 6 6 6"/>',check:'<path d="M5 12l5 5 9-10"/>',chevl:'<path d="M15 5l-7 7 7 7"/>',chevr:'<path d="M9 5l7 7-7 7"/>',
+sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>',suncloud:'<circle cx="8" cy="8" r="3"/><path d="M8 2v1M2 8h1M3.8 3.8l.7.7M12.2 3.8l-.7.7"/><path d="M8 20h10a3.5 3.5 0 0 0 .4-7A5 5 0 0 0 9 14a3 3 0 0 0-1 6z"/>',fog:'<path d="M4 9h16M3 13h18M6 17h12"/>',rain:'<path d="M7 14h10a3.5 3.5 0 0 0 .4-7A5 5 0 0 0 8 8a3 3 0 0 0-1 6z"/><path d="M9 17l-1 3M13 17l-1 3M17 17l-1 3"/>',snow:'<path d="M7 14h10a3.5 3.5 0 0 0 .4-7A5 5 0 0 0 8 8a3 3 0 0 0-1 6z"/><path d="M9 18v.01M13 18v.01M17 18v.01M11 21v.01M15 21v.01"/>',storm:'<path d="M7 14h10a3.5 3.5 0 0 0 .4-7A5 5 0 0 0 8 8a3 3 0 0 0-1 6z"/><path d="M12 14l-2 4h3l-2 4"/>'};
+function ic(n,s){return P[n]?'<svg viewBox="0 0 24 24" width="'+(s||"1.15em")+'" height="'+(s||"1.15em")+'" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.2em;flex:none">'+P[n]+'</svg>':""}
+function fx(h){return String(h).replace(/\[\[(\w+)\]\]/g,function(_,n){return ic(n)})}
+
+var esc=function(t){return String(t==null?"":t).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})};
+var root=$("axRoot"),body=$("axBody"),nav=$("axNav"),cur="HOME";
+var TABS=[["HOME","[[home]]"],["WEATHER","[[cloud]]"],["NAVIGATION","[[route]]"],["VEHICLE","[[car]]"],["MEDIA","[[music]]"],["INTELLIGENCE","[[spark]]"],["ALERT","[[bell]]"],["SETTINGS","[[gear]]"]];
+var W=null,WD=null,pos=null,posSrc="",wAt=0,wErr="";
+/* ---- Alerts ---- */
+function alertAdd(lv,msg,key){
+ if(key&&S.alerts.some(function(a){return a.key===key&&Date.now()-a.t<36e5}))return;
+ S.alerts.unshift({t:Date.now(),lv:lv,msg:msg,ack:false,key:key||""});S.alerts=S.alerts.slice(0,100);save();badge();if(cur==="ALERT")render();
+}
+function feed(){var l=S.alerts.slice(0,4);return'<div class="axc"><h3>最新の通知</h3>'+(l.map(function(x){return'<div class="axal '+(x.lv||"")+(x.ack?" ack":"")+'"><b>'+(x.lv==="crit"?"重要":x.lv==="warn"?"注意":"情報")+"</b> "+new Date(x.t).toLocaleTimeString("ja-JP").slice(0,5)+"<br>"+esc(x.msg)+"</div>"}).join("")||'<div class=axs>通知はありません</div>')+'<button class="axb g" data-go="ALERT">通知センターを開く</button></div>'}
+function badge(){var n=S.alerts.filter(function(a){return!a.ack}).length,b=$("axBadge");b.textContent=n;b.style.display=n&&S.notify?"inline":"none"}
+/* ---- Position (independent watch; does not touch existing GPS logic) ---- */
+function getPos(cb){
+ function fb(){var l=null;try{l=JSON.parse(localStorage.getItem("axion_lastpos"))}catch(e){}
+  if(S.rLat!==""&&S.rLon!==""){pos={lat:+S.rLat,lon:+S.rLon};posSrc="手動地域";}
+  else if(l){pos=l;posSrc="前回位置";}else{pos=null;posSrc="";}
+  cb&&cb()}
+ try{if(typeof userPos!=="undefined"&&userPos&&userPos.lat!=null){pos={lat:userPos.lat,lon:userPos.lng!=null?userPos.lng:userPos.lon};posSrc="GPS(SHO NAVI)";cb&&cb();return}}catch(e){}
+ if(!S.useGps||!navigator.geolocation){fb();return}
+ navigator.geolocation.getCurrentPosition(function(p){pos={lat:p.coords.latitude,lon:p.coords.longitude};posSrc="GPS";
+  try{localStorage.setItem("axion_lastpos",JSON.stringify(pos))}catch(e){}cb&&cb()},function(){alertAdd("warn","GPS取得失敗。保存位置/手動地域を使用","gps");fb()},{timeout:8000,maximumAge:60000});
+}
+/* ---- Weather (Open-Meteo, no key) ---- */
+var WC={0:["快晴","[[sun]]"],1:["晴れ","[[suncloud]]"],2:["薄曇り","[[suncloud]]"],3:["曇り","[[cloud]]"],45:["霧","[[fog]]"],48:["霧","[[fog]]"],51:["小雨","[[rain]]"],53:["雨","[[rain]]"],55:["強い雨","[[rain]]"],61:["雨","[[rain]]"],63:["雨","[[rain]]"],65:["大雨","[[rain]]"],71:["雪","[[snow]]"],73:["雪","[[snow]]"],75:["大雪","[[snow]]"],80:["にわか雨","[[rain]]"],81:["にわか雨","[[rain]]"],82:["激しい雨","[[storm]]"],95:["雷雨","[[storm]]"],96:["雷雨","[[storm]]"],99:["雷雨","[[storm]]"]};
+var wc=function(c){return WC[c]||["--","·"]};
+function wfetch(lat,lon){
+ var u="https://api.open-meteo.com/v1/forecast?latitude="+lat+"&longitude="+lon+"&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,wind_direction_10m&hourly=temperature_2m,precipitation_probability,precipitation,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,sunrise,sunset&timezone=auto&forecast_days=7&wind_speed_unit=kmh";
+ return fetch(u).then(function(r){if(!r.ok)throw new Error(r.status);return r.json()});
+}
+function loadWeather(force){
+ if(!force&&Date.now()-wAt<S.refresh*6e4&&W)return;
+ if(!navigator.onLine){wErr="オフライン";return}
+ getPos(function(){
+  if(!pos){wErr="位置不明（設定で地域を入力）";if(cur==="HOME"||cur==="WEATHER")render();return}
+  wAt=Date.now();
+  wfetch(pos.lat,pos.lon).then(function(j){W=j;wErr="";chkWx(j);if(root.classList.contains("on"))render()})
+   .catch(function(e){wErr="天気取得失敗";alertAdd("warn","天気データ取得失敗 ("+e.message+")","wfail");if(root.classList.contains("on"))render()});
+ });
+}
+function chkWx(j){
+ var c=j.current,h=j.hourly,i;
+ if(c.wind_speed_10m>=40)alertAdd("crit","強風注意: 現在 "+Math.round(c.wind_speed_10m)+"km/h","wind");
+ if([65,75,82,95,96,99].indexOf(c.weather_code)>-1)alertAdd("crit","警戒: "+wc(c.weather_code)[0],"sev"+c.weather_code);
+ var t=new Date().toISOString().slice(0,13),idx=h.time.findIndex(function(x){return x.slice(0,13)>=t.slice(0,13)}),mx=0;
+ for(i=idx;i<idx+3&&i<h.time.length;i++)mx=Math.max(mx,h.precipitation_probability[i]||0);
+ if(mx>=70)alertAdd("warn","今後3時間の降水確率 "+mx+"%","rain");
+}
+function advice(){
+ if(!W)return"天気データなし";var c=W.current;
+ if([71,73,75].indexOf(c.weather_code)>-1)return"降雪中。スリップに注意し速度を控えてください。";
+ if(c.precipitation>0||[61,63,65,80,81,82].indexOf(c.weather_code)>-1)return"雨天です。車間距離を十分に取ってください。";
+ if(c.wind_speed_10m>=30)return"風が強めです。橋や高架でハンドルに注意。";
+ if([45,48].indexOf(c.weather_code)>-1)return"霧です。ライトを点灯し減速を。";
+ return"安全運転でお出かけください。";
+}
+/* ---- Navi bridge: read existing DOM only ---- */
+function navInfo(){
+ var n=$("destName"),d=$("destDist"),t=$("destTime");
+ var name=n?n.textContent.trim():"",ok=name&&name!=="目的地";
+ return{set:ok,name:ok?name:"未設定",dist:d?d.textContent.trim():"--",time:t?t.textContent.trim():"--"};
+}
+/* ---- Media ---- */
+var au=new Audio(),Q=[],qi=-1;au.volume=S.vol/100;
+function mtitle(){return qi>=0&&Q[qi]?(Q[qi].title||Q[qi].name)+(Q[qi].artist?" - "+Q[qi].artist:""):"停止中"}
+au.onplay=au.onpause=function(){if(cur==="MEDIA"||cur==="HOME")render()};
+function playQ(i){if(i<0||i>=Q.length)return;qi=i;au.src=Q[i].url;au.play().catch(function(){alertAdd("warn","再生に失敗しました","aud")});S.hist.unshift({t:Date.now(),n:Q[i].name});S.hist=S.hist.slice(0,30);save();
+ try{if("mediaSession"in navigator)navigator.mediaSession.metadata=new MediaMetadata({title:Q[i].title||Q[i].name,artist:Q[i].artist||"ローカルファイル",album:Q[i].album||"AXION MEDIA"})}catch(e){}render()}
+function nextT(d){if(!Q.length)return;playQ((qi+d+Q.length)%Q.length)}
+/* ---- Voice / Intelligence ---- */
+var log=[],HK={};
+function say(t){log.unshift(t);log=log.slice(0,8);try{if(S.voice&&window.speechSynthesis){var u=new SpeechSynthesisUtterance(t);u.lang="ja-JP";u.volume=S.vol/100;speechSynthesis.speak(u)}}catch(e){}if(cur==="INTELLIGENCE")render()}
+function cmd(q){
+ q=(q||"").trim();if(!q)return;log.unshift("[[play]] "+q);try{if(HK.cmd&&HK.cmd(q))return}catch(err){}
+ var go=function(t){cur=t;render()};
+ if(/天気|気温|雨/.test(q)){go("WEATHER");say(W?"現在"+wc(W.current.weather_code)[0]+"、"+Math.round(W.current.temperature_2m)+"度です。"+advice():"天気データがありません。")}
+ else if(/ホーム/.test(q))go("HOME");else if(/設定/.test(q))go("SETTINGS");else if(/通知|アラート/.test(q))go("ALERT");
+ else if(/ナビ|地図|画面を閉じ/.test(q)){close()}
+ else if(/状態|ステータス/.test(q))say("通信 "+(navigator.onLine?"オンライン":"オフライン")+"、位置 "+(pos?posSrc:"不明")+"、未確認通知 "+S.alerts.filter(function(a){return!a.ack}).length+"件。");
+ else if(/休憩|サービスエリア|コンビニ|駐車場|ガソリン|レストラン|周辺/.test(q)){nearby(q)}
+ else if(/再生/.test(q)){if(au.src)au.play()}else if(/停止|止めて/.test(q)){au.pause()}else if(/次/.test(q))nextT(1);
+ else if(/目的地|行きたい|までのルート/.test(q)){var m=q.replace(/(を|まで|に|へ)?(の)?(目的地|ナビ|ルート|行きたい|案内|設定).*/,"").trim();geo(m||q)}
+ else say("「"+q+"」は未対応です。天気・状態・周辺検索・目的地検索が使えます。");
+}
+function geo(q){
+ if(!navigator.onLine){say("オフラインのため検索できません");return}
+ fetch("https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&accept-language=ja&q="+encodeURIComponent(q)).then(function(r){return r.json()}).then(function(r){
+  if(!r.length){say("見つかりませんでした");return}
+  window.__axRes=r;say(r.length+"件見つかりました。下の一覧を確認してください。");render()}).catch(function(){alertAdd("warn","目的地検索失敗","geo");say("検索に失敗しました")});
+}
+function nearby(q){
+ if(!pos){say("位置が不明です");return}
+ var tag=/ガソリン/.test(q)?'["amenity"="fuel"]':/コンビニ/.test(q)?'["shop"="convenience"]':/駐車場/.test(q)?'["amenity"="parking"]':/レストラン/.test(q)?'["amenity"="restaurant"]':'["highway"~"services|rest_area"]';
+ fetch("https://overpass-api.de/api/interpreter",{method:"POST",body:"[out:json][timeout:15];nwr"+tag+"(around:5000,"+pos.lat+","+pos.lon+");out center 8;"}).then(function(r){return r.json()}).then(function(j){
+  window.__axRes=j.elements.map(function(e){return{display_name:(e.tags&&(e.tags.name||e.tags.brand))||"名称なし",lat:e.lat||(e.center&&e.center.lat),lon:e.lon||(e.center&&e.center.lon)}});
+  say(window.__axRes.length?"周辺に"+window.__axRes.length+"件あります。":"5km以内に見つかりません。");render()}).catch(function(){say("周辺検索に失敗しました")});
+}
+function startVoice(){
+ var R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R){say("このブラウザは音声認識に未対応です");return}
+ var r=new R();r.lang="ja-JP";r.onresult=function(e){cmd(e.results[0][0].transcript)};r.onerror=function(){say("音声認識エラー")};try{r.start()}catch(e){}
+}
+/* ---- Views ---- */
+var tag=function(k,t){return'<span class="axt '+k+'">'+t+"</span>"};
+function row(a,b){return'<div class="axr"><span>'+a+"</span><b>"+b+"</b></div>"}
+function vv(k,u){var v=S.veh[k];return v===""||v==null?"データなし":esc(v)+u}
+function vtag(){return S.demo?tag("demo","手動/デモ値"):tag("off","実車データ未接続")}
+var V={
+HOME:function(){
+ var n=new Date(),ni=navInfo(),c=W&&W.current,pp="--";
+ if(W){var t=n.toISOString().slice(0,13),i=W.hourly.time.findIndex(function(x){return x>=t.slice(0,13)});pp=(W.hourly.precipitation_probability[Math.max(i,0)]||0)+"%"}
+ return'<div class="axg"><div class="axc" style="grid-column:1/-1"><div class="axbig" id="axClk">'+n.toTimeString().slice(0,5)+'</div><div class="axs">'+n.toLocaleDateString("ja-JP",{year:"numeric",month:"long",day:"numeric",weekday:"long"})+" ／ 現在地: "+(pos?pos.lat.toFixed(3)+", "+pos.lon.toFixed(3)+" ("+esc(posSrc)+")":"不明")+"</div></div>"+
+ '<div class="axc"><h3>WEATHER '+(c?tag("live","実データ"):"")+'</h3>'+(c?'<div class="axm">'+wc(c.weather_code)[1]+" "+Math.round(c.temperature_2m)+"°C</div><div class=axs>"+wc(c.weather_code)[0]+" ／ 降水確率 "+pp+"</div>":'<div class=axs>'+esc(wErr||"取得中…")+"</div>")+"</div>"+
+ '<div class="axc"><h3>NAVIGATION</h3><div class="axm">'+esc(ni.name)+"</div><div class=axs>"+esc(ni.dist)+" ／ "+esc(ni.time)+"</div></div>"+
+ '<div class="axc"><h3>MEDIA</h3><div class="axm">'+esc(mtitle())+'</div><div class=axs>'+(au.paused?"一時停止":"再生中")+'</div></div>'+
+ '<div class="axc"><h3>VEHICLE '+vtag()+'</h3>'+row("走行距離",vv("odo"," km"))+row("燃料",vv("tank"," %"))+"</div>"+
+ '<div class="axc"><h3>ALERT</h3><button class="axb" data-go="ALERT">未確認 '+S.alerts.filter(function(a){return!a.ack}).length+" 件を見る</button></div>"+feed()+"</div>";
+},
+WEATHER:function(){
+ if(!W)return'<div class=axc>'+esc(wErr||"天気取得中…")+'<br><button class=axb data-act=wr>再取得</button></div>';
+ var c=W.current,d=W.daily,h=W.hourly,t=new Date().toISOString().slice(0,13),i=Math.max(0,h.time.findIndex(function(x){return x.slice(0,13)>=t}));
+ var hh="";for(var k=i;k<i+12&&k<h.time.length;k++)hh+="<div>"+h.time[k].slice(11,16)+"<br>"+wc(h.weather_code[k])[1]+"<br>"+Math.round(h.temperature_2m[k])+"°<br>"+(h.precipitation_probability[k]||0)+"%</div>";
+ var dd="";d.time.forEach(function(x,j){dd+=row((j==0?"今日":j==1?"明日":x.slice(5))+" "+wc(d.weather_code[j])[1]+" "+wc(d.weather_code[j])[0],Math.round(d.temperature_2m_max[j])+"/"+Math.round(d.temperature_2m_min[j])+"° 雨"+(d.precipitation_probability_max[j]||0)+"% "+d.precipitation_sum[j]+"mm")});
+ return'<div class=axg><div class=axc><h3>現在地の天気 '+tag("live","Open-Meteo")+'</h3><div class=axbig>'+Math.round(c.temperature_2m)+"°</div><div class=axs>"+wc(c.weather_code)[1]+" "+wc(c.weather_code)[0]+"</div>"+row("体感",Math.round(c.apparent_temperature)+"°C")+row("湿度",c.relative_humidity_2m+"%")+row("風",Math.round(c.wind_speed_10m)+" km/h / "+Math.round(c.wind_direction_10m)+"°")+row("降水量",c.precipitation+" mm")+row("日の出/日の入",d.sunrise[0].slice(11)+" / "+d.sunset[0].slice(11))+'<div class=axs>'+advice()+'</div><button class=axb data-act=wr>更新</button></div>'+
+ '<div class=axc><h3>1時間ごと</h3><div class=axh>'+hh+'</div><h3 style="margin-top:12px">週間</h3>'+dd+"</div><div class=axc id=axDw><h3>目的地周辺の天気</h3>"+(DW&&DW.html||'<div class=axs>ナビの目的地が確認できると表示します</div>')+"</div></div>"+
+ '<div class=axs style="margin-top:8px">雨雲レーダー画像は本ビルドでは未実装（降水量・確率のみ）。</div>';
+},
+NAVIGATION:function(){
+ var n=navInfo();
+ return'<div class=axg><div class=axc><h3>NAVI 連携</h3>'+row("目的地",esc(n.name))+row("距離",esc(n.dist))+row("到着",esc(n.time))+'<div class=axs>経路・GPS・音声案内は既存のSHO NAVI画面が継続動作します。</div><button class=axb id=axToNavi>NAVI画面に戻る</button></div>'+
+ '<div class=axc id=axDw><h3>目的地周辺の天気 / 到着時刻付近</h3>'+(DW&&DW.html||'<div class=axs>目的地が未設定、または座標未取得です</div>')+'</div><div class=axc><h3>未実装・データ非対応</h3><div class=axs>経由地管理／SA・PA詳細／料金／渋滞・規制は、信頼できるAPIがないため架空表示せず未実装です。周辺のSA/PA・駐車場はINTELLIGENCEの周辺検索（OpenStreetMap）で検索できます。</div></div></div>';
+},
+VEHICLE:function(){
+ var f=S.veh;function inp(k,l,u){return"<div class=axr><span>"+l+'</span><span><input data-v="'+k+'" value="'+esc(f[k])+'" size=9> '+u+"</span></div>"}
+ return'<div class=axc><h3>VEHICLE '+vtag()+"</h3><div class=axs>ブラウザは実車CANに接続できないため、手動入力値を表示します（実測値ではありません）。車両制御機能は実装していません。</div>"+inp("odo","走行距離","km")+inp("kmpl","燃費","km/L")+inp("tank","ガソリン残量","%")+inp("batt","バッテリー","%")+inp("tire","タイヤ空気圧","kPa")+inp("insp","次回点検日","")+inp("shaken","車検期限","")+'<button class=axb data-act=vs>保存</button></div>';
+},
+MEDIA:function(){
+ return'<div class=axg><div class=axc><h3>NOW PLAYING '+tag("live","ローカルファイル")+'</h3><div class=axm>'+esc(mtitle())+'</div><div class=axs>アーティスト/アルバム: ファイルのメタデータ未取得</div><div style="margin:8px 0"><button class=axb data-act=pv>[[prev]]</button><button class=axb data-act=pp>'+(au.paused?"[[play]]":"[[pause]]")+'</button><button class=axb data-act=nx>[[next]]</button></div>音量 <input type=range min=0 max=100 value='+S.vol+' id=axVol><br><br><input type=file accept="audio/*" multiple id=axFile></div>'+
+ '<div class=axc><h3>再生キュー</h3>'+(Q.map(function(q,i){return'<div class=axr data-q='+i+'><span>'+(i==qi?"[[play]] ":"")+esc(q.name)+"</span></div>"}).join("")||'<div class=axs>空</div>')+'</div><div class=axc><h3>再生履歴</h3>'+(S.hist.slice(0,10).map(function(h){return row(new Date(h.t).toLocaleTimeString("ja-JP").slice(0,5),esc(h.n))}).join("")||'<div class=axs>なし</div>')+'</div><div class=axc><h3>対応状況</h3><div class=axs>Bluetooth接続状態の取得・外部ストリーミングはブラウザ制限のため未対応。端末内音声ファイルのみ再生可。</div></div></div>';
+},
+INTELLIGENCE:function(){
+ var r=(window.__axRes||[]).map(function(x,ix){return'<div class=axr data-ix='+ix+'><span>'+esc(x.display_name).slice(0,60)+'</span><a class=axb style="text-decoration:none" target=_blank rel=noopener href="https://www.openstreetmap.org/?mlat='+x.lat+"&mlon="+x.lon+'#map=16/'+x.lat+"/"+x.lon+'">地図</a><span><button class=axb data-x=dest data-i='+ix+'>目的地</button><button class="axb g" data-x=wp data-i='+ix+'>経由地</button></span></div>'}).join("");
+ return'<div class=axg><div class=axc><h3>音声・テキスト操作 '+tag("live","APIキー不要")+'</h3><input id=axQ placeholder="例: 天気 / 近くのガソリン / 東京駅 目的地" style="width:100%"><br><button class=axb data-act=qs>実行</button><button class=axb data-act=mic>[[mic]] 音声</button><div class=axs>ルールベース解釈。目的地・周辺検索はNominatim/Overpass(外部通信)を使用。検索結果の「目的地」「経由地」ボタンで既存ナビへ設定できます。AI(Gemini)は設定でキーを入れたときだけ使います。キーはHTMLに埋め込まれていません。</div></div><div class=axc><h3>応答</h3>'+log.map(function(l){return"<div class=axs>"+esc(l)+"</div>"}).join("")+"</div>"+(r?'<div class=axc><h3>検索結果</h3>'+r+"</div>":"")+"</div>";
+},
+ALERT:function(){
+ return'<div class=axc><h3>通知センター</h3><button class=axb data-act=ack>すべて確認済み</button><button class="axb g" data-act=clr>消去</button>'+(S.alerts.map(function(a,i){return'<div class="axal '+(a.lv||"")+(a.ack?" ack":"")+'" data-al='+i+'><b>'+(a.lv==="crit"?"重要":a.lv==="warn"?"注意":"情報")+"</b> "+new Date(a.t).toLocaleString("ja-JP")+"<br>"+esc(a.msg)+"</div>"}).join("")||'<div class=axs>通知はありません</div>')+"</div>";
+},
+SETTINGS:function(){
+ function cb(k,l){return'<div class=axr><span>'+l+'</span><input type=checkbox data-s="'+k+'" '+(S[k]?"checked":"")+"></div>"}
+ return'<div class=axc><h3>SETTINGS</h3><div class=axr><span>テーマ</span><select data-s=theme><option value=dark'+(S.theme=="dark"?" selected":"")+'>ダーク</option><option value=light'+(S.theme=="light"?" selected":"")+'>ライト</option></select></div>'+cb("menuWx","天気をメニューに表示")+cb("launcher","フローティングボタンを表示")+cb("voice","音声応答")+cb("notify","通知バッジ")+cb("useGps","GPSを使用")+cb("demo","デモ/手動モード")+
+ '<div class=axr><span>音量</span><input type=range min=0 max=100 data-s=vol value='+S.vol+'></div><div class=axr><span>天気更新(分)</span><input type=number min=5 max=120 data-s=refresh value='+S.refresh+' style="width:80px"></div><div class=axr><span>手動地域 緯度/経度</span><span><input data-s=rLat value="'+esc(S.rLat)+'" size=7> <input data-s=rLon value="'+esc(S.rLon)+'" size=7></span></div><button class=axb data-act=rs>AXION設定をリセット</button><div class=axs>既存SHO NAVIの保存データには触れません（AXIONは axion_* キーのみ使用）。</div></div>';
+}};
+/* ---- Destination weather (separate from current-location weather) ---- */
+var DW=null,dwKey="";
+function destWx(){
+ var n=navInfo();if(!n.set||!navigator.onLine||n.name===dwKey)return;dwKey=n.name;
+ fetch("https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q="+encodeURIComponent(n.name)).then(function(r){return r.json()}).then(function(r){
+  if(!r[0])throw 0;return wfetch(r[0].lat,r[0].lon)}).then(function(j){
+  var m=(n.time.match(/(\d{1,2}):(\d{2})/)||[]),h=j.hourly,i=0;
+  if(m.length){var d=new Date();d.setHours(+m[1],0,0,0);if(d<new Date())d.setDate(d.getDate()+1);var s=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")+"T"+String(d.getHours()).padStart(2,"0");i=Math.max(0,h.time.findIndex(function(x){return x.indexOf(s)==0}))}
+  DW={html:row("目的地: "+esc(n.name),"")+row("現在",wc(j.current.weather_code)[1]+" "+Math.round(j.current.temperature_2m)+"°C")+row("到着予定付近 "+h.time[i].slice(11,16),wc(h.weather_code[i])[1]+" "+Math.round(h.temperature_2m[i])+"° 雨"+(h.precipitation_probability[i]||0)+"%")};
+  if(cur==="WEATHER"||cur==="NAVIGATION")render()}).catch(function(){DW=null;dwKey=""});
+}
+/* ---- Render / events ---- */
+function render(){
+ nav.innerHTML=fx(TABS.map(function(t){return'<button data-go="'+t[0]+'" class="'+(t[0]===cur?"on":"")+'"><span>'+t[1]+"</span>"+t[0]+"</button>"}).join(""));
+ var y=body.scrollTop;body.innerHTML=fx(V[cur]());body.scrollTop=y;root.classList.toggle("light",S.theme==="light");root.setAttribute("data-view",cur);var tt=$("axTitle");if(tt)tt.textContent=cur==="HOME"?"":cur;
+ var f=$("axFile");if(f)f.onchange=function(){Array.prototype.forEach.call(f.files,function(x){Q.push({name:x.name,url:URL.createObjectURL(x)})});if(qi<0)playQ(0);else render()};
+ var v=$("axVol");if(v)v.oninput=function(){S.vol=+v.value;au.volume=S.vol/100;save()};
+ var q=$("axToNavi");if(q)q.onclick=close;
+}
+function open(t){if(typeof t==="string"&&V[t])cur=t;root.classList.add("on");getPos(function(){loadWeather();destWx();render()});render();requestAnimationFrame(function(){root.classList.add("vis")})}
+function close(){root.classList.remove("vis");setTimeout(function(){root.classList.remove("on")},250)}
+$("axLaunch").onclick=function(){open()};$("axClose").innerHTML=ic("back","16")+" NAVI";$("axClose").onclick=close;
+root.addEventListener("click",function(e){
+ var t=e.target.closest("[data-go],[data-act],[data-q],[data-al]");if(!t)return;
+ if(t.dataset.go){cur=t.dataset.go;render();return}
+ if(t.dataset.q){playQ(+t.dataset.q);return}
+ if(t.dataset.al){S.alerts[+t.dataset.al].ack=true;save();badge();render();return}
+ var a=t.dataset.act;
+ if(a==="wr")loadWeather(true);else if(a==="pp"){au.src?(au.paused?au.play():au.pause()):0}else if(a==="nx")nextT(1);else if(a==="pv")nextT(-1);
+ else if(a==="vs"){Array.prototype.forEach.call(body.querySelectorAll("[data-v]"),function(i){S.veh[i.dataset.v]=i.value});save();alertAdd("info","車両情報を保存しました")}
+ else if(a==="ack"){S.alerts.forEach(function(x){x.ack=true});save();badge();render()}else if(a==="clr"){S.alerts=[];save();badge();render()}
+ else if(a==="qs"){var i=$("axQ");cmd(i.value)}else if(a==="mic")startVoice();
+ else if(a==="rs"){if(confirm("AXION設定をリセットしますか？")){try{localStorage.removeItem(KEY)}catch(e){}location.reload()}}
+});
+root.addEventListener("change",function(e){var k=e.target.dataset.s;if(!k)return;
+ var v=e.target.type==="checkbox"?e.target.checked:(e.target.type==="range"||e.target.type==="number")?+e.target.value:e.target.value;S[k]=v;if(k==="vol")au.volume=v/100;save();
+ if(k==="rLat"||k==="rLon"){wAt=0;loadWeather(true)}render()});
+root.addEventListener("keydown",function(e){if(e.key==="Enter"&&e.target.id==="axQ")cmd(e.target.value)});
+function net(){var n=$("axNet");n.textContent=navigator.onLine?"ONLINE":"OFFLINE";n.className="axt "+(navigator.onLine?"live":"off");if(!navigator.onLine)alertAdd("warn","オフラインです","off")}
+window.addEventListener("online",net);window.addEventListener("offline",net);
+window.addEventListener("error",function(e){alertAdd("info","システムエラー: "+(e.message||"").slice(0,80),"js"+(e.message||"").slice(0,20))});
+setInterval(function(){var c=$("axClk");if(c)c.textContent=new Date().toTimeString().slice(0,5);},5e3);
+setInterval(function(){loadWeather();destWx()},6e4);
+setTimeout(function(){loadWeather();net();badge()},2500);
+window.AXION={open:open,close:close,alert:alertAdd,state:function(){return{S:S,pos:pos,W:!!W}},ext:{P:P,HK:HK,go:function(t){cur=t;render()},cmd:cmd,W:function(){return W},ic:ic,fx:fx,V:V,S:S,render:render,esc:esc,row:row,tag:tag,alertAdd:alertAdd,getPos:getPos,wfetch:wfetch,wc:wc,pos:function(){return pos},say:say,close:close,cur:function(){return cur},au:au,Q:Q,qi:function(){return qi},playQ:playQ,save:save,root:root,geoSet:function(r){window.__axRes=r}}};
+})();
+</script>
+
+<style id="axion-ext-css">
+#axLaunch{width:38px!important;height:38px!important;min-height:0!important;padding:0!important;border-radius:50%!important;right:auto!important;opacity:.3;transition:opacity .3s;touch-action:none;display:flex;align-items:center;justify-content:center;font-size:15px!important;letter-spacing:0!important;box-shadow:0 0 0 1px rgba(80,160,255,.4)}
+#axLaunch.act{opacity:1}
+#axBadge{position:absolute;top:-4px;right:-4px;margin:0!important}
+.axrd{position:absolute;left:0;top:0;width:100%;opacity:.7}
+.axrow2{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.axcov{width:84px;height:84px;border-radius:12px;object-fit:cover;background:#1b2a44;flex:0 0 84px}
+#axBody{animation:axIn .25s}
+</style>
+<script id="axion-ext-js">
+(function(){
+"use strict";
+var X=window.AXION&&window.AXION.ext;if(!X)return;
+var V=X.V,esc=X.esc,row=X.row,tag=X.tag,S=X.S,au=X.au,Q=X.Q,$=function(i){return document.getElementById(i)};
+/* ===== 1. 邪魔にならない起動ボタン: 小型・半透明・ドラッグで移動(位置保存) ===== */
+(function(){
+ var L=$("axLaunch");if(!L)return;L.innerHTML='<span>A</span><span id="axBadge">0</span>';window.__axL=L;
+ var p=null;try{p=JSON.parse(localStorage.getItem("axion_btn"))}catch(e){}
+ function put(x,y){x=Math.max(2,Math.min(innerWidth-40,x));y=Math.max(2,Math.min(innerHeight-40,y));L.style.left=x+"px";L.style.top=y+"px"}
+ put(p?p.x:6,p?p.y:Math.round(innerHeight*0.55));
+ var st=null,moved=false,tm=null;
+ function awake(){L.classList.add("act");clearTimeout(tm);tm=setTimeout(function(){L.classList.remove("act")},2500)}
+ L.addEventListener("pointerdown",function(e){st={x:e.clientX,y:e.clientY,l:L.offsetLeft,t:L.offsetTop};moved=false;awake();try{L.setPointerCapture(e.pointerId)}catch(_){}});
+ L.addEventListener("pointermove",function(e){if(!st)return;var dx=e.clientX-st.x,dy=e.clientY-st.y;if(Math.abs(dx)+Math.abs(dy)>10)moved=true;if(moved)put(st.l+dx,st.t+dy)});
+ L.addEventListener("pointerup",function(){if(moved){try{localStorage.setItem("axion_btn",JSON.stringify({x:L.offsetLeft,y:L.offsetTop}))}catch(e){}}st=null;awake()});
+ L.addEventListener("click",function(e){if(moved){e.stopImmediatePropagation();e.preventDefault();moved=false}},true);
+ window.addEventListener("resize",function(){put(L.offsetLeft,L.offsetTop)});
+})();
+/* ===== helpers ===== */
+function hv(a,b){var R=6371000,r=Math.PI/180,dl=(b[0]-a[0])*r,dn=(b[1]-a[1])*r,x=Math.sin(dl/2)*Math.sin(dl/2)+Math.cos(a[0]*r)*Math.cos(b[0]*r)*Math.sin(dn/2)*Math.sin(dn/2);return 2*R*Math.asin(Math.sqrt(x))}
+function me(){try{if(typeof userPos!=="undefined"&&userPos)return{lat:userPos.lat,lon:userPos.lon}}catch(e){}return X.pos()}
+function dest(){try{if(typeof hasDestinationSet!=="undefined"&&hasDestinationSet&&typeof destMarker!=="undefined"&&destMarker){var l=destMarker.getLatLng();return{lat:l.lat,lon:l.lng}}}catch(e){}return null}
+function wps(){try{return waypointsList.filter(function(w){return!w.passed})}catch(e){return[]}}
+function hm(s){s=Math.round(s/60);return Math.floor(s/60)+"時間"+(s%60)+"分"}
+function pad(n){return(n<10?"0":"")+n}
+function jget(u,opt){return fetch(u,opt).then(function(r){if(!r.ok)throw new Error(r.status);return r.json()})}
+/* ===== 2. NAVIGATION 拡張 ===== */
+var R={busy:false,err:"",d:null,km:0,toll:null,hw:false,exits:[],sa:[],ic:[],rest:[],wx:[],park:null,brief:""},WS={q:"",res:[]};
+function analyze(){
+ var o=me(),d=dest();if(!o||!d){R.err="現在地または目的地が未設定です（NAVIで目的地を設定してください）";X.render();return}
+ if(!navigator.onLine){R.err="オフラインのため解析できません";X.render();return}
+ if(R.busy)return;R.busy=true;R.err="";X.render();
+ var pts=[o].concat(wps(),[d]);
+ jget("https://router.project-osrm.org/route/v1/driving/"+pts.map(function(p){return p.lon+","+p.lat}).join(";")+"?overview=full&geometries=geojson&steps=true").then(function(j){
+  if(!j.routes||!j.routes[0])throw new Error("no route");
+  var rt=j.routes[0],c=rt.geometry.coordinates,cd=[0],i;R.d=rt;R.at=Date.now();
+  for(i=1;i<c.length;i++)cd.push(cd[i-1]+hv([c[i-1][1],c[i-1][0]],[c[i][1],c[i][0]]));
+  var tot=cd[cd.length-1];R.c=c;R.cd=cd;R.km=tot/1000;R.toll=false;R.hw=false;R.exits=[];
+  var acc=0;rt.legs.forEach(function(l){l.steps.forEach(function(s){
+   (s.intersections||[]).forEach(function(it){var k=it.classes||[];if(k.indexOf("toll")>-1)R.toll=true;if(k.indexOf("motorway")>-1)R.hw=true});
+   var m=s.maneuver||{};if(["on ramp","off ramp","fork","merge","end of road"].indexOf(m.type)>-1&&(s.name||s.destinations||s.exits)){R.exits.push({km:acc/1000,t:(m.type==="off ramp"?"出口: ":m.type==="on ramp"?"入口: ":"分岐: ")+[s.name,s.exits?"出口"+s.exits:"",s.destinations?"方面 "+s.destinations:""].filter(Boolean).join(" ")})}
+   acc+=s.distance})});
+  function at(f){var t=f*tot;for(var k=0;k<cd.length;k++)if(cd[k]>=t)return k;return cd.length-1}
+  /* ルート周辺の天気(到着時刻別) */
+  var fr=[0,.25,.5,.75,1],sp=fr.map(function(f){var q=c[at(f)];return{f:f,lat:q[1],lon:q[0],km:f*R.km}});
+  var pw=jget("https://api.open-meteo.com/v1/forecast?latitude="+sp.map(function(p){return p.lat.toFixed(3)}).join(",")+"&longitude="+sp.map(function(p){return p.lon.toFixed(3)}).join(",")+"&hourly=weather_code,precipitation_probability,temperature_2m,wind_speed_10m&forecast_days=2&timezone=auto&wind_speed_unit=kmh").then(function(w){
+   w=Array.isArray(w)?w:[w];R.wx=sp.map(function(p,k){var arr=new Date(Date.now()+p.f*rt.duration*1000),key=arr.getFullYear()+"-"+pad(arr.getMonth()+1)+"-"+pad(arr.getDate())+"T"+pad(arr.getHours()),h=w[k].hourly,ix=Math.max(0,h.time.findIndex(function(x){return x.indexOf(key)===0}));
+    return{km:p.km,t:pad(arr.getHours())+":"+pad(arr.getMinutes()),code:h.weather_code[ix],pp:h.precipitation_probability[ix]||0,tp:h.temperature_2m[ix],ws:h.wind_speed_10m[ix]}});
+   R.wx.forEach(function(x,k){var bad=[65,75,82,95,96,99].indexOf(x.code)>-1;if(bad||x.ws>=40||x.pp>=80)X.alertAdd("warn","ルート "+x.km.toFixed(0)+"km地点("+x.t+"頃): "+X.wc(x.code)[0]+" 風"+Math.round(x.ws)+"km/h 降水"+x.pp+"%","rw"+k)})});
+  /* SA/PA・IC/JCT (OpenStreetMap/Overpass) */
+  var n=Math.min(28,c.length),poly=[],idxs=[];for(i=0;i<n;i++){var ci=Math.round(i*(c.length-1)/Math.max(1,n-1));idxs.push(ci);poly.push(c[ci][1].toFixed(4),c[ci][0].toFixed(4))}
+  var po=fetch("https://overpass-api.de/api/interpreter",{method:"POST",body:'[out:json][timeout:25];(nwr["highway"~"^(services|rest_area)$"](around:1500,'+poly.join(",")+');node["highway"="motorway_junction"](around:150,'+poly.join(",")+'););out center tags 120;'}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json()}).then(function(j){
+   R.sa=[];R.ic=[];(j.elements||[]).forEach(function(e){var la=e.lat!=null?e.lat:e.center&&e.center.lat,lo=e.lon!=null?e.lon:e.center&&e.center.lon;if(la==null)return;
+    var b=1e12,bi=0;idxs.forEach(function(ci,k){var dd=hv([la,lo],[c[ci][1],c[ci][0]]);if(dd<b){b=dd;bi=ci}});var km=cd[bi]/1000,t=e.tags||{},nm=t.name||t.ref||"名称なし";
+    if(t.highway==="motorway_junction")R.ic.push({km:km,n:nm+(t.ref&&t.name?" ("+t.ref+")":""),smart:/スマート|Smart/i.test(nm)||t.smart==="yes"});
+    else R.sa.push({km:km,n:nm,k:t.highway==="services"?"SA/大型":"PA/小型",op:t.operator||t.brand||"",wc:t.toilets==="yes"||t.toilets==="designated",oh:t.opening_hours||""})});
+   R.sa.sort(function(a,b){return a.km-b.km});R.ic.sort(function(a,b){return a.km-b.km});
+   R.rest=[];if(rt.duration>5400){var per=R.km*7200/rt.duration,k2=1;while(per*k2<R.km-10){var best=null;R.sa.forEach(function(s){if(!best||Math.abs(s.km-per*k2)<Math.abs(best.km-per*k2))best=s});if(best&&Math.abs(best.km-per*k2)<per*.4)R.rest.push({at:per*k2,s:best});k2++}}});
+  var pk=jget("https://overpass-api.de/api/interpreter?data="+encodeURIComponent('[out:json][timeout:15];nwr["amenity"="parking"](around:800,'+d.lat+','+d.lon+');out center tags 12;')).then(function(j){
+   R.park=(j.elements||[]).map(function(e){var la=e.lat!=null?e.lat:e.center&&e.center.lat,lo=e.lon!=null?e.lon:e.center&&e.center.lon,t=e.tags||{};return{n:t.name||"名称なし",dist:hv([la,lo],[d.lat,d.lon]),fee:t.fee==="yes"?"有料":t.fee==="no"?"無料":"料金不明",cap:t.capacity||"",ty:t.parking||""}}).sort(function(a,b){return a.dist-b.dist})});
+  var wrap=function(p){return p.catch(function(e){X.alertAdd("warn","ルート補助データ取得失敗: "+e.message,"rfail")})};
+  return Promise.all([wrap(pw),wrap(po),wrap(pk)]);
+ }).then(function(){
+  var eta=new Date(Date.now()+R.d.duration*1000);
+  R.brief="目的地まで約"+R.km.toFixed(0)+"キロ、所要約"+hm(R.d.duration)+"、到着予定"+pad(eta.getHours())+"時"+pad(eta.getMinutes())+"分です。"+(R.wx.length?"到着付近は"+X.wc(R.wx[R.wx.length-1].code)[0]+"、降水確率"+R.wx[R.wx.length-1].pp+"%。":"")+(R.rest.length?"休憩は約"+Math.round(R.rest[0].at)+"キロ付近の"+R.rest[0].s.n+"がおすすめです。":"");
+ }).catch(function(e){R.err="経路解析に失敗しました ("+e.message+")";X.alertAdd("warn","ルート解析失敗: "+e.message,"ran")}).then(function(){R.busy=false;X.render();if(R.speak){R.speak=false;if(R.brief)X.say(R.brief)}});
+}
+var oldNav=V.NAVIGATION;
+V.NAVIGATION=function(){
+ var d=dest(),h=oldNav();
+ var w=wps(),all=[];try{all=waypointsList}catch(e){}
+ var s='<div class=axg style="margin-top:10px"><div class=axc><h3>ルート解析 '+tag("live","OSRM")+'</h3>'+(d?'<button class=axb data-x=analyze>'+(R.busy?"解析中…":"解析・更新")+'</button><button class="axb g" data-x=brief>要約を読み上げ</button>':'<div class=axs>目的地未設定</div>')+(R.err?'<div class=axs style="color:#f87171">'+esc(R.err)+"</div>":"");
+ if(R.d){var eta=new Date(R.at+R.d.duration*1000);s+=row("距離",R.km.toFixed(1)+" km")+row("所要時間",hm(R.d.duration))+row("到着予定(経由地込み)",pad(eta.getHours())+":"+pad(eta.getMinutes()))+row("有料道路",R.toll?"含む（料金額は取得不可）":"含まない")+row("高速利用",R.hw?"あり":"なし")+'<div class=axs>※渋滞は考慮していません。'+new Date(R.at).toLocaleTimeString("ja-JP").slice(0,5)+' 時点</div>'+(R.brief?'<div class=axs>'+esc(R.brief)+"</div>":"")}
+ s+='</div><div class=axc><h3>経由地管理</h3>'+(all.length?all.map(function(x,i){return'<div class=axr><span>'+(x.passed?"[[check]] ":(i+1)+". ")+esc((x.name||"経由地").split(",")[0])+'</span><span><button class="axb g" data-x=wpup data-i='+i+'>[[up]]</button><button class="axb g" data-x=wpdn data-i='+i+'>[[down]]</button><button class=axb data-x=wpdel data-i='+i+'>[[close]]</button></span></div>'}).join(""):'<div class=axs>経由地なし</div>')+
+ '<div class=axrow2><input id=axWq placeholder="経由地を検索" value="'+esc(WS.q)+'" style="flex:1;min-width:120px"><button class=axb data-x=wsearch>検索</button></div>'+WS.res.map(function(r,i){return'<div class=axr><span>'+esc(r.display_name).slice(0,40)+'</span><button class=axb data-x=wsadd data-i='+i+'>追加</button></div>'}).join("")+'</div>';
+ s+='<div class=axc><h3>ルート周辺の天気（到着時刻別） '+tag("live","Open-Meteo")+'</h3>'+(R.wx.length?R.wx.map(function(x){return row(x.km.toFixed(0)+"km地点 "+x.t,X.wc(x.code)[1]+" "+Math.round(x.tp)+"° 雨"+x.pp+"% 風"+Math.round(x.ws))}).join(""):'<div class=axs>解析後に表示</div>')+"</div>";
+ s+='<div class=axc><h3>IC・JCT・出口 '+tag("live","OSRM/OSM")+'</h3>'+(R.exits.length||R.ic.length?(R.exits.slice(0,8).map(function(e){return row(e.km.toFixed(1)+"km",esc(e.t))}).join("")+R.ic.slice(0,10).map(function(e){return row(e.km.toFixed(0)+"km",esc(e.n)+(e.smart?" [スマートIC]":""))}).join("")):'<div class=axs>解析後に表示（データがない場合は空）</div>')+'</div>';
+ s+='<div class=axc><h3>SA・PA／休憩提案 '+tag("live","OSM")+'</h3>'+(R.rest.length?R.rest.map(function(r){return row("約"+Math.round(r.at)+"km付近で休憩",esc(r.s.n))}).join("")+"<hr style='opacity:.2'>":"")+(R.sa.length?R.sa.slice(0,12).map(function(x){return row(x.km.toFixed(0)+"km "+x.k,esc(x.n)+(x.op?" / "+esc(x.op):"")+(x.wc?" / トイレあり":""))}).join(""):'<div class=axs>解析後に表示（OSMに登録がない場合は出ません）</div>')+'</div>';
+ s+='<div class=axc><h3>目的地周辺の駐車場 '+tag("live","OSM")+'</h3>'+(R.park?(R.park.length?R.park.slice(0,8).map(function(p){return row(esc(p.n),Math.round(p.dist)+"m "+p.fee+(p.cap?" "+p.cap+"台":""))}).join(""):'<div class=axs>800m以内の登録なし</div>'):'<div class=axs>解析後に表示</div>')+'</div>';
+ s+='<div class=axc><h3>データ非対応</h3><div class=axs>渋滞・交通規制・通行料金額は、無料で使える公的な情報源がないため表示しません（架空表示はしません）。</div></div></div>';
+ return h+s;
+};
+/* ===== 3. WEATHER: 雨雲レーダー(RainViewer) ===== */
+var RD={fr:[],host:"",i:0,tm:null,err:"",busy:false},oldW=V.WEATHER;
+function loadRadar(){if(RD.fr.length||RD.busy||!navigator.onLine)return;RD.busy=true;jget("https://api.rainviewer.com/public/weather-maps.json").then(function(j){RD.host=j.host;RD.fr=(j.radar.past||[]).concat(j.radar.nowcast||[]);RD.i=Math.max(0,(j.radar.past||[]).length-1);RD.err=""}).catch(function(e){RD.err="雨雲データ取得失敗"}).then(function(){RD.busy=false;if(X.cur()==="WEATHER")X.render()})}
+function tile(){var p=me()||X.pos();if(!p)return null;var z=6,n=Math.pow(2,z),r=Math.PI/180,fx=(p.lon+180)/360*n,fy=(1-Math.log(Math.tan(p.lat*r)+1/Math.cos(p.lat*r))/Math.PI)/2*n;return{z:z,x:Math.floor(fx),y:Math.floor(fy),fx:fx-Math.floor(fx),fy:fy-Math.floor(fy),n:n}}
+function rdUrl(t,dx,dy){var f=RD.fr[RD.i];return RD.host+f.path+"/256/"+t.z+"/"+(t.x+dx)+"/"+(t.y+dy)+"/2/1_1.png"}
+V.WEATHER=function(){
+ var h=oldW();loadRadar();var t=tile(),c='<div class=axc style="margin-top:10px"><h3>雨雲レーダー '+tag("live","RainViewer")+'</h3>';
+ if(!t)c+='<div class=axs>位置が不明です</div>';else if(!RD.fr.length)c+='<div class=axs>'+esc(RD.err||"読み込み中…")+"</div>";
+ else{var g="";for(var dy=-1;dy<=1;dy++)for(var dx=-1;dx<=1;dx++)g+='<div style="position:relative"><img loading=lazy style="width:100%;display:block" src="https://tile.openstreetmap.org/'+t.z+"/"+(t.x+dx)+"/"+(t.y+dy)+'.png"><img class=axrd data-dx='+dx+" data-dy="+dy+' src="'+rdUrl(t,dx,dy)+'"></div>';
+  c+='<div style="position:relative;display:grid;grid-template-columns:repeat(3,1fr);max-width:480px;line-height:0;border-radius:12px;overflow:hidden">'+g+'<div style="position:absolute;left:'+((1+t.fx)/3*100)+'%;top:'+((1+t.fy)/3*100)+'%;width:12px;height:12px;margin:-6px;border-radius:50%;background:#2b8cff;border:2px solid #fff"></div></div><div class=axrow2><button class=axb data-x=rdprev>[[chevl]]</button><button class=axb data-x=rdplay>[[playpause]]</button><button class=axb data-x=rdnext>[[chevr]]</button><span class=axs id=axRdT>'+new Date(RD.fr[RD.i].time*1000).toLocaleTimeString("ja-JP").slice(0,5)+'</span></div><div class=axs>© RainViewer / OpenStreetMap（広域表示・過去〜予測）</div>'}
+ return h+c+"</div>";
+};
+function rdSet(i){if(!RD.fr.length)return;RD.i=(i+RD.fr.length)%RD.fr.length;var t=tile();if(!t)return;Array.prototype.forEach.call(document.querySelectorAll(".axrd"),function(im){im.src=rdUrl(t,+im.dataset.dx,+im.dataset.dy)});var e=$("axRdT");if(e)e.textContent=new Date(RD.fr[RD.i].time*1000).toLocaleTimeString("ja-JP").slice(0,5)}
+/* ===== 4. VEHICLE: 点検・車検・警告 ===== */
+var oldV=V.VEHICLE;
+function dleft(v){if(!v)return null;var d=new Date(v);if(isNaN(d))return null;return Math.ceil((d-Date.now())/864e5)}
+function vehCheck(){var v=S.veh,a=dleft(v.insp),b=dleft(v.shaken),n;
+ if(a!==null&&a<=30)X.alertAdd("warn",a<0?"点検期限を過ぎています":"点検まで残り"+a+"日","insp");
+ if(b!==null&&b<=60)X.alertAdd("warn",b<0?"車検期限を過ぎています":"車検まで残り"+b+"日","shaken");
+ n=Math.min.apply(null,[v.tire,v.tFL,v.tFR,v.tRL,v.tRR].map(parseFloat).filter(function(x){return x>0}));if(isFinite(n)&&n<200)X.alertAdd("warn","タイヤ空気圧が低めです ("+n+"kPa)","tire");
+ n=parseFloat(v.tank);if(n>=0&&v.tank!==""&&n<=15)X.alertAdd("warn","ガソリン残量が少なくなっています ("+n+"%)","fuel");
+ n=parseFloat(v.batt);if(v.batt!==""&&n<=15)X.alertAdd("warn","バッテリー残量が少なくなっています ("+n+"%)","batt")}
+V.VEHICLE=function(){var f=function(l,v){var d=dleft(v);return row(l,d===null?"データなし":d<0?"期限超過("+(-d)+"日)":"あと"+d+"日")};
+ return oldV()+'<div class=axc style="margin-top:10px"><h3>メンテナンス予定</h3>'+f("次回点検",S.veh.insp)+f("車検",S.veh.shaken)+'<div class=axs>日付は YYYY-MM-DD 形式で入力してください。期限が近づくとALERTに通知します。</div></div>'};
+setTimeout(vehCheck,4000);setInterval(vehCheck,36e5);
+/* ===== 5. MEDIA: ライブラリ(IndexedDB)・プレイリスト・タグ・シャッフル/リピート ===== */
+var M={fst:[],lib:[],pl:{},fav:{},sel:"ALL",shuf:false,rep:"off",urls:{},out:"",ready:false,cur:null};
+try{var mm=JSON.parse(localStorage.getItem("axion_media_v1")||"{}");M.pl=mm.pl||{};M.fav=mm.fav||{};M.fst=mm.fst||[];M.shuf=!!mm.shuf;M.rep=mm.rep||"off"}catch(e){}
+function msave(){try{localStorage.setItem("axion_media_v1",JSON.stringify({pl:M.pl,fav:M.fav,shuf:M.shuf,rep:M.rep,fst:M.fst}))}catch(e){}}
+var db=null;
+function dbo(){return new Promise(function(ok,ng){if(db)return ok(db);if(!window.indexedDB)return ng(new Error("IndexedDB非対応"));var q=indexedDB.open("axion_lib",1);q.onupgradeneeded=function(){q.result.createObjectStore("t",{keyPath:"id"})};q.onsuccess=function(){db=q.result;ok(db)};q.onerror=function(){ng(q.error)}})}
+function dbq(mode,fn){return dbo().then(function(d){return new Promise(function(ok,ng){var tx=d.transaction("t",mode),st=tx.objectStore("t"),r=fn(st);tx.oncomplete=function(){ok(r&&r.result)};tx.onerror=function(){ng(tx.error)}})})}
+function mload(){dbq("readonly",function(s){return s.getAll()}).then(function(a){M.lib=a||[];M.ready=true;if(X.cur()==="MEDIA")X.render()}).catch(function(e){M.ready=true;X.alertAdd("warn","音楽ライブラリを開けません: "+e.message,"mdb")})}
+mload();
+function tagsLoad(){return new Promise(function(ok){if(window.jsmediatags)return ok();var s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js";s.onload=ok;s.onerror=ok;document.head.appendChild(s)})}
+function readTags(f){return tagsLoad().then(function(){return new Promise(function(ok){if(!window.jsmediatags)return ok({});try{window.jsmediatags.read(f,{onSuccess:function(r){var t=r.tags||{},art=null;if(t.picture){try{art=new Blob([new Uint8Array(t.picture.data)],{type:t.picture.format||"image/jpeg"})}catch(e){}}ok({title:t.title,artist:t.artist,album:t.album,art:art})},onError:function(){ok({})}})}catch(e){ok({})}})})}
+function addFiles(files){var arr=Array.prototype.slice.call(files),p=Promise.resolve();arr.forEach(function(f){p=p.then(function(){return readTags(f)}).then(function(t){var rec={id:Date.now()+"-"+Math.random().toString(36).slice(2,7),name:f.name.replace(/\.[^.]+$/,""),title:t.title||"",artist:t.artist||"",album:t.album||"",art:t.art||null,blob:f};return dbq("readwrite",function(s){return s.put(rec)}).then(function(){M.lib.push(rec)})}).catch(function(e){X.alertAdd("warn","保存失敗: "+f.name+" ("+e.message+")","mput")})});p.then(function(){X.say&&0;X.render()})}
+function url(t){if(!M.urls[t.id])M.urls[t.id]=URL.createObjectURL(t.blob);return M.urls[t.id]}
+function art(t){if(!t.art)return"";if(!M.urls["a"+t.id])M.urls["a"+t.id]=URL.createObjectURL(t.art);return M.urls["a"+t.id]}
+function list(){var l=M.lib;if(M.sel==="FAV")return l.filter(function(t){return M.fav[t.id]});if(M.sel!=="ALL"&&M.pl[M.sel])return M.pl[M.sel].map(function(id){return l.filter(function(t){return t.id===id})[0]}).filter(Boolean);return l}
+function playFrom(ids,id){Q.length=0;ids.forEach(function(t){Q.push({id:t.id,name:t.name,title:t.title,artist:t.artist,album:t.album,url:url(t),art:art(t)})});var i=Math.max(0,ids.map(function(t){return t.id}).indexOf(id));X.playQ(i)}
+function cidx(){var s=Q.length?Q.map(function(q){return q.src}):0;return Q.findIndex(function(q){return q.url===au.getAttribute("src")||q.url===au.src})}
+function step(d){if(!Q.length)return;var i=cidx();if(i<0)i=0;var n=M.shuf&&Q.length>1?(function(){var r;do{r=Math.floor(Math.random()*Q.length)}while(r===i);return r})():i+d;if(n>=Q.length){if(M.rep==="all")n=0;else{au.pause();return}}if(n<0)n=Q.length-1;X.playQ(n)}
+au.onended=function(){if(M.rep==="one"){au.currentTime=0;au.play();return}step(1)};
+au.ontimeupdate=function(){var s=$("axSeek"),t=$("axTm");if(s&&au.duration&&document.activeElement!==s){s.max=Math.floor(au.duration);s.value=Math.floor(au.currentTime)}if(t)t.textContent=ft(au.currentTime)+" / "+ft(au.duration)};
+function ft(x){if(!isFinite(x))return"0:00";x=Math.floor(x);return Math.floor(x/60)+":"+pad(x%60)}
+function outputs(){if(!navigator.mediaDevices||!navigator.mediaDevices.enumerateDevices){M.out="この環境では取得できません";X.render();return}navigator.mediaDevices.enumerateDevices().then(function(d){var o=d.filter(function(x){return x.kind==="audiooutput"&&x.label}).map(function(x){return x.label});M.out=o.length?o.join(" / "):"出力デバイス名は権限がないため取得できません（Bluetooth接続状態そのものはブラウザから取得不可）"}).catch(function(){M.out="取得失敗"}).then(function(){X.render()})}
+V.MEDIA=function(){
+ var q=Q[cidx()]||null,pl=Object.keys(M.pl),playing=au.src&&!au.paused;
+ var s='<div class=axg><div class=axc><h3>NOW PLAYING '+tag("live","端末内ライブラリ")+'</h3><div class=axrow2>'+(q&&q.art?'<img class=axcov src="'+q.art+'">':'<div class=axcov></div>')+'<div style="flex:1;min-width:0"><div class=axm style="font-size:20px">'+esc(q?(q.title||q.name):"停止中")+'</div><div class=axs>'+esc(q&&q.artist||"アーティスト不明")+' ／ '+esc(q&&q.album||"アルバム不明")+'</div></div></div>'+
+ '<input type=range id=axSeek min=0 max=100 value=0 style="width:100%;margin-top:10px"><div class=axs id=axTm>0:00 / 0:00</div><div class=axrow2><button class=axb data-x=mprev>[[prev]]</button><button class=axb data-x=mtog>'+(playing?"[[pause]]":"[[play]]")+'</button><button class=axb data-x=mnext>[[next]]</button><button class="axb '+(M.shuf?"":"g")+'" data-x=mshuf>[[shuffle]]</button><button class="axb '+(M.rep==="off"?"g":"")+'" data-x=mrep>'+(M.rep==="one"?"[[repeat1]]":"[[repeat]]")+'</button><button class="axb '+(q&&M.fav[q.id]?"":"g")+'" data-x=mfavq>[[star]]</button></div>音量 <input type=range min=0 max=100 value='+S.vol+' id=axVol></div>'+
+ '<div class=axc><h3>ライブラリ ('+M.lib.length+'曲)</h3><div class=axrow2><select id=axSel data-x=msel><option value=ALL>すべて</option><option value=FAV'+(M.sel==="FAV"?" selected":"")+'>お気に入り</option>'+pl.map(function(n){return'<option'+(M.sel===n?" selected":"")+' value="'+esc(n)+'">'+esc(n)+'</option>'}).join("")+'</select><button class="axb g" data-x=mnewpl>＋プレイリスト</button>'+(M.pl[M.sel]?'<button class="axb g" data-x=mdelpl>削除</button>':"")+'</div><input type=file accept="audio/*" multiple id=axUp style="margin:8px 0"><div class=axs>追加した曲は端末内(IndexedDB)に保存され、再起動後も残ります。</div>'+
+ (list().map(function(t){return'<div class=axr><span style="min-width:0;overflow:hidden;text-overflow:ellipsis">'+(M.fav[t.id]?"[[starf]] ":"")+esc(t.title||t.name)+'<br><span class=axs>'+esc(t.artist||"")+'</span></span><span style="white-space:nowrap"><button class=axb data-x=mplay data-id="'+t.id+'">[[play]]</button><button class="axb g" data-x=mfav data-id="'+t.id+'">[[star]]</button><button class="axb g" data-x=maddpl data-id="'+t.id+'">＋</button><button class="axb g" data-x=mdel data-id="'+t.id+'">[[trash]]</button></span></div>'}).join("")||'<div class=axs>'+(M.ready?"曲がありません。ファイルを追加してください":"読み込み中…")+'</div>')+'</div>'+
+ '<div class=axc><h3>再生キュー</h3>'+(Q.map(function(x,i){return'<div class=axr data-q='+i+'><span>'+(q&&x.id===q.id?"[[play]] ":"")+esc(x.title||x.name)+"</span></div>"}).join("")||'<div class=axs>空</div>')+'</div><div class=axc><h3>再生履歴</h3>'+(S.hist.slice(0,10).map(function(h){return row(new Date(h.t).toLocaleTimeString("ja-JP").slice(0,5),esc(h.n))}).join("")||'<div class=axs>なし</div>')+'</div><div class=axc><h3>出力デバイス</h3><div class=axs>'+esc(M.out||"未取得")+'</div><button class="axb g" data-x=mout>確認</button><div class=axs>外部ストリーミング(Spotify等)はブラウザから制御できないため非対応です。</div></div></div>';
+ setTimeout(function(){var u=$("axUp");if(u)u.onchange=function(){addFiles(u.files)};var sk=$("axSeek");if(sk){sk.oninput=function(){au.currentTime=+sk.value};au.ontimeupdate()}},0);
+ return s};
+/* ===== 7. メニュー連動・設定反映 ===== */
+var WIC=function(c){return c===0?"fa-sun":c<3?"fa-cloud-sun":c===3?"fa-cloud":(c===45||c===48)?"fa-smog":(c>=71&&c<=77)||c===85||c===86?"fa-snowflake":c>=95?"fa-cloud-bolt":(c===65||c===82||c===81||c===55)?"fa-cloud-showers-heavy":"fa-cloud-rain"};
+function applyMenu(){
+ var L=window.__axL;if(L)L.style.display=S.launcher?"flex":"none";
+ Array.prototype.forEach.call(document.querySelectorAll(".axMenuWxCard"),function(b){b.style.display=S.menuWx===false?"none":""});
+ var w=X.W&&X.W(),t=w?X.wc(w.current.weather_code)[0]+" "+Math.round(w.current.temperature_2m)+"°":"取得中…";
+ Array.prototype.forEach.call(document.querySelectorAll(".axMenuWxTxt"),function(x){x.textContent=t});
+ if(w)Array.prototype.forEach.call(document.querySelectorAll(".axMenuWxIc"),function(x){x.className="axMenuWxIc fa-solid "+WIC(w.current.weather_code)+" text-cyan-400 text-xs"});
+}
+applyMenu();setInterval(applyMenu,3000);
+X.root.addEventListener("change",function(ev){var k=ev.target.dataset&&ev.target.dataset.s;if(k==="menuWx"||k==="launcher")applyMenu()});
+
+var HK=X.HK;
+/* ===== 8. 高速道路の右パネル: IC/JCT/SA・PA を一覧表示 ===== */
+var HW={last:0,wq:null,wqT:0,name:"",obs:null};
+function curKm(){var p=me();if(!p||!R.c)return null;var b=1e12,bi=0,c=R.c,i,dx,dy,d;for(i=0;i<c.length;i++){dx=(c[i][1]-p.lat)*111000;dy=(c[i][0]-p.lon)*91000;d=dx*dx+dy*dy;if(d<b){b=d;bi=i}}return{km:R.cd[bi]/1000,off:Math.sqrt(b)}}
+function icName(n){return/IC$|インターチェンジ|スマート|出口|入口|JCT|ジャンクション/.test(n)?n:n+"IC"}
+function fmtD(r){return r<1?Math.round(r*1000)+" m":r.toFixed(r<10?1:0)+" km"}
+function winQuery(cp){
+ var now=Date.now();
+ if(HW.wq&&HW.wq.rid===R.at&&cp.km<HW.wq.from+35)return;
+ if(now-HW.wqT<20000||!navigator.onLine)return;HW.wqT=now;
+ var c=R.c,cd=R.cd,i,i0=0,pts=[],idx=[],last=-1e9,lim=(cp.km+90)*1000;
+ for(i=0;i<cd.length;i++){if(cd[i]/1000>=cp.km){i0=i;break}}
+ for(i=i0;i<c.length&&cd[i]<=lim;i++){if(cd[i]-last>=2500){pts.push(c[i][1].toFixed(4),c[i][0].toFixed(4));idx.push(i);last=cd[i]}}
+ if(idx.length<2)return;
+ var rid=R.at,from=cp.km,pl=pts.join(",");
+ fetch("https://overpass-api.de/api/interpreter",{method:"POST",body:'[out:json][timeout:25];(node["highway"="motorway_junction"](around:200,'+pl+');nwr["highway"~"^(services|rest_area)$"](around:1500,'+pl+'););out center tags 100;'}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json()}).then(function(j){
+  var items=[],seen={};
+  (j.elements||[]).forEach(function(e){var la=e.lat!=null?e.lat:e.center&&e.center.lat,lo=e.lon!=null?e.lon:e.center&&e.center.lon;if(la==null)return;
+   var t=e.tags||{},b=1e12,bi=idx[0],nm=t.name||t["name:ja"]||t.exit_to||"",k,label;
+   idx.forEach(function(ci){var d=hv([la,lo],[c[ci][1],c[ci][0]]);if(d<b){b=d;bi=ci}});
+   if(t.highway==="motorway_junction"){if(!nm&&!t.ref)return;nm=nm||("出口 "+t.ref);if(/JCT|ジャンクション/.test(nm)){k="JCT";label=nm}else{k="IC";label=icName(nm)}}
+   else{k="P";if(!nm)nm="休憩施設";label=nm+(/SA|PA|サービスエリア|パーキング/.test(nm)?"":(t.highway==="services"?" SA":" PA"))}
+   var km=cd[bi]/1000,key=k+label+Math.round(km);if(seen[key])return;seen[key]=1;items.push({km:km,k:k,n:label})});
+  items.sort(function(a,b){return a.km-b.km});HW.wq={rid:rid,from:from,items:items};hwTick()}).catch(function(){HW.wqT=Date.now()+40000});
+}
+var BG={IC:'<span style="flex:none;width:24px;height:24px;border-radius:50%;background:#fff;color:#1d4ed8;font:900 10px/24px system-ui;text-align:center">IC</span>',JCT:'<span style="flex:none;width:24px;height:24px;border-radius:6px;background:#fff;color:#15803d;font:900 8px/24px system-ui;text-align:center">JCT</span>',P:'<span style="flex:none;width:24px;height:24px;border-radius:50%;background:#2563eb;color:#fff;font:900 12px/24px system-ui;text-align:center">P</span>'};
+function hwRow(b,d,n){return'<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-top:1px solid #2b2f38">'+b+'<span style="font:11px ui-monospace,monospace;color:#cbd5e1;min-width:50px">'+d+'</span><span style="font-size:12px;color:#fff;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">'+esc(n)+'</span></div>'}
+var GEN=/^(高速出口|出口|--|)$/;
+function hwTick(){
+ var pnl=$("sideWidgetHighway"),box=$("axHwBox"),lst=$("axHwList"),hn=$("hwExitName");if(!pnl||!box||!lst)return;
+ if(pnl.classList.contains("hidden")||pnl.offsetParent===null)return;
+ box.classList.remove("hidden");
+ var now=Date.now(),cp=curKm();
+ if(!R.busy&&dest()&&(!R.d||(cp&&cp.off>400)||now-R.at>180000)&&now-HW.last>60000){HW.last=now;analyze()}
+ var curRow='<div style="display:flex;align-items:center;gap:8px;padding:8px;border-top:1px solid #2b2f38;color:#fff;font-size:12px;font-weight:700"><span style="width:24px;text-align:center">'+X.ic("car","18")+'</span>現在地</div>',msg=function(t){return'<div style="padding:8px;font-size:11px;color:#94a3b8">'+esc(t)+'</div>'+curRow};
+ if(!dest()){lst.innerHTML=msg("目的地未設定");return}
+ if(!R.d||!cp){lst.innerHTML=msg(R.busy?"解析中…":(R.err||"データなし"));return}
+ winQuery(cp);
+ var arr=(HW.wq&&HW.wq.rid===R.at)?HW.wq.items:[];
+ var ahead=arr.filter(function(x){return x.km-cp.km>-0.05}).slice(0,6);
+ var nx=ahead.filter(function(x){return x.k!=="P"})[0];HW.name=nx?nx.n:"";
+ if(!ahead.length){
+  var ex=R.exits.filter(function(e){return e.km-cp.km>-0.05}).slice(0,4);
+  lst.innerHTML=ex.length?ex.slice().reverse().map(function(e){return hwRow(BG.IC,fmtD(Math.max(0,e.km-cp.km)),e.t)}).join("")+curRow:msg(HW.wq?"この先の出入口データなし":"出入口を取得中…");
+ }else lst.innerHTML=ahead.slice().reverse().map(function(x){return hwRow(BG[x.k],fmtD(Math.max(0,x.km-cp.km)),x.n)}).join("")+curRow;
+ if(hn){
+  if(!HW.obs){HW.obs=new MutationObserver(function(){if(HW.name&&GEN.test(hn.textContent.trim())){HW.obs.disconnect();hn.textContent=HW.name;HW.obs.observe(hn,{childList:true,characterData:true,subtree:true})}});HW.obs.observe(hn,{childList:true,characterData:true,subtree:true})}
+  if(HW.name&&GEN.test(hn.textContent.trim()))hn.textContent=HW.name;
+ }
+}
+setInterval(hwTick,2000);
+/* ===== 9. MEDIA: ストリーミング埋め込み・ラジオ・既存オーディオ画面の連携 ===== */
+var RA={res:[],err:"",busy:false},EMB={h:0,src:"",recent:[]},PL={mode:"lib",sig:""};
+try{EMB.recent=JSON.parse(localStorage.getItem("axion_embed")||"[]")}catch(e){}
+var RSV=["https://de1.api.radio-browser.info","https://nl1.api.radio-browser.info","https://at1.api.radio-browser.info"];
+function radioSearch(name,tg,done){
+ RA.busy=true;RA.err="";
+ var q="/json/stations/search?countrycode=JP&limit=30&hidebroken=true&order=clickcount&reverse=true"+(name?"&name="+encodeURIComponent(name):"")+(tg?"&tag="+encodeURIComponent(tg):""),hlsOk=document.createElement("audio").canPlayType("application/vnd.apple.mpegurl")!=="";
+ (function tr(i){
+  if(i>=RSV.length){RA.busy=false;RA.err="ラジオ局の取得に失敗しました";X.render();done&&done([]);return}
+  jget(RSV[i]+q).then(function(a){RA.res=(a||[]).filter(function(s){var u=s.url_resolved||"";return u&&(location.protocol!=="https:"||/^https:/.test(u))&&(s.hls!==1||hlsOk)}).slice(0,20);RA.busy=false;X.render();done&&done(RA.res)}).catch(function(){tr(i+1)});
+ })(0);
+}
+function playStation(s){Q.length=0;Q.push({id:"radio-"+(s.stationuuid||s.name),name:s.name,title:s.name,artist:"インターネットラジオ",album:(s.tags||"").split(",")[0]||"",url:s.url_resolved,art:/^https:/.test(s.favicon||"")?s.favicon:""});X.playQ(0)}
+function embedInfo(u){var m;u=(u||"").trim();
+ if(m=u.match(/open\.spotify\.com\/(?:intl-[a-z]+\/)?(track|album|playlist|episode|show|artist)\/([A-Za-z0-9]+)/))return{src:"https://open.spotify.com/embed/"+m[1]+"/"+m[2]+"?theme=0",h:(m[1]==="track"||m[1]==="episode")?152:352};
+ if(/youtu/.test(u)&&(m=u.match(/[?&]list=([\w-]+)/))&&!/[?&]v=/.test(u))return{src:"https://www.youtube.com/embed/videoseries?list="+m[1],h:240};
+ if(m=u.match(/(?:youtu\.be\/|[?&]v=|\/shorts\/)([\w-]{11})/))return{src:"https://www.youtube.com/embed/"+m[1],h:240};
+ if(/music\.apple\.com/.test(u))return{src:u.replace("music.apple.com","embed.music.apple.com"),h:300};
+ if(/soundcloud\.com/.test(u))return{src:"https://w.soundcloud.com/player/?url="+encodeURIComponent(u),h:170};
+ return null}
+var host=document.createElement("div");host.id="axStreamHost";host.style.cssText="flex:none;height:0;overflow:hidden;background:#000;transition:height .25s";
+var nv=$("axNav");if(nv&&nv.parentNode)nv.parentNode.insertBefore(host,nv);
+function embedSet(info){host.innerHTML=info?'<iframe src="'+info.src+'" style="width:100%;height:100%;border:0" allow="autoplay; encrypted-media; clipboard-write; fullscreen"></iframe>':"";EMB.h=info?info.h:0;EMB.src=info?info.src:"";if(info)au.pause()}
+setInterval(function(){host.style.height=(EMB.h&&X.cur()==="MEDIA"&&X.root.classList.contains("vis"))?Math.min(EMB.h,Math.round(innerHeight*0.42))+"px":"0px"},400);
+var SV=[["Spotify","https://open.spotify.com/"],["YouTube Music","https://music.youtube.com/"],["Apple Music","https://music.apple.com/jp/"],["Amazon Music","https://music.amazon.co.jp/"],["LINE MUSIC","https://music.line.me/"]];
+var TG={"J-POP":"j-pop","ロック":"rock","ジャズ":"jazz","クラシック":"classical","ニュース":"news","アニメ":"anime"};
+var oldM=V.MEDIA;
+V.MEDIA=function(){
+ var h=oldM(),fav=M.fst||[];
+ var st=function(r,i,src){var isf=fav.some(function(f){return f.url_resolved===r.url_resolved});return'<div class=axr><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(r.name)+'</span><span style="white-space:nowrap"><button class=axb data-x=rplay data-src='+src+' data-i='+i+'>[[play]]</button><button class="axb '+(isf?"":"g")+'" data-x=rfav data-src='+src+' data-i='+i+'>[[star]]</button></span></div>'};
+ var s='<div class=axg style="margin-top:10px"><div class=axc><h3>ストリーミング '+tag("live","埋め込み再生")+'</h3><div class=axs>SpotifyやYouTubeなどのURLを貼ると、この画面内で再生できます（再生できるかは各サービスの仕様・ログイン状態次第）。</div><div class=axrow2><input id=axEu placeholder="曲・プレイリストのURL" style="flex:1;min-width:140px"><button class=axb data-x=eplay>再生</button><button class="axb g" data-x=eclose>閉じる</button></div>'+
+ EMB.recent.map(function(u,i){return'<div class=axr><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(u)+'</span><button class="axb g" data-x=erec data-i='+i+'>再生</button></div>'}).join("")+
+ '<div class=axs style="margin-top:8px">サービスを開く（別タブ・操作はそちらで）</div><div class=axrow2>'+SV.map(function(v){return'<a class="axb g" style="text-decoration:none;display:inline-flex;align-items:center" target=_blank rel=noopener href="'+v[1]+'">'+v[0]+'</a>'}).join("")+'</div></div>'+
+ '<div class=axc><h3>インターネットラジオ '+tag("live","radio-browser")+'</h3><div class=axrow2><input id=axRq placeholder="局名で検索" style="flex:1;min-width:120px"><button class=axb data-x=rsearch>検索</button></div><div class=axrow2>'+Object.keys(TG).map(function(k){return'<button class="axb g" data-x=rtag data-t="'+k+'">'+k+'</button>'}).join("")+'</div>'+
+ (RA.busy?'<div class=axs>検索中…</div>':"")+(RA.err?'<div class=axs style="color:#f87171">'+esc(RA.err)+'</div>':"")+
+ (fav.length?'<h3 style="margin-top:10px">お気に入り局</h3>'+fav.map(function(r,i){return st(r,i,"f")}).join(""):"")+
+ (RA.res.length?'<h3 style="margin-top:10px">検索結果</h3>'+RA.res.map(function(r,i){return st(r,i,"r")}).join(""):'<div class=axs>局名かジャンルで検索してください（国内局）。HLS形式はSafari系のみ対応。</div>')+'</div></div>';
+ return h+s;
+};
+function stOf(t){return t.dataset.src==="f"?M.fst[+t.dataset.i]:RA.res[+t.dataset.i]}
+/* 既存「オーディオ」画面(右パネル)を実際に動く曲プレイヤーにする */
+window.togglePlayMusic=function(){if(au.src){au.paused?au.play():au.pause()}else if(M.lib.length){var l=list();playFrom(l,l[0].id)}else{var f=$("axPanelUp");if(f)f.click()}};
+window.nextTrack=function(){step(1)};window.prevTrack=function(){step(-1)};
+var bs='font-size:10px;padding:3px 7px;border-radius:7px;background:#1e293b;border:1px solid #334155;color:#cbd5e1;cursor:pointer';
+function panelInit(){
+ var pr=$("audioProgress");if(!pr||$("axMusicExtra"))return;
+ var ex=document.createElement("div");ex.id="axMusicExtra";ex.style.cssText="margin:2px 0";
+ ex.innerHTML='<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px"><label style="'+bs+'">曲を追加<input type=file multiple accept="audio/*" id=axPanelUp style="display:none"></label><button type=button style="'+bs+'" data-pm=lib>曲一覧</button><button type=button style="'+bs+'" data-pm=rad>ラジオ</button><button type=button style="'+bs+'" data-pm=shuf id=axPmShuf></button><button type=button style="'+bs+'" data-pm=rep id=axPmRep></button></div><div id=axPanelList style="max-height:64px;overflow-y:auto;border:1px solid #1e293b;border-radius:8px"></div>';
+ pr.parentNode.parentNode.insertBefore(ex,pr.parentNode);
+ ex.addEventListener("change",function(e){if(e.target.id==="axPanelUp"){addFiles(e.target.files);e.target.value=""}});
+ ex.addEventListener("click",function(e){
+  var b=e.target.closest("[data-pm],[data-pid],[data-ps]");if(!b)return;
+  if(b.dataset.pm==="lib")PL.mode="lib";else if(b.dataset.pm==="rad"){PL.mode="rad";if(!RA.res.length&&!RA.busy)radioSearch("","")}
+  else if(b.dataset.pm==="shuf"){M.shuf=!M.shuf;msave()}else if(b.dataset.pm==="rep"){M.rep=M.rep==="off"?"all":M.rep==="all"?"one":"off";msave()}
+  else if(b.dataset.pid){var l=list();playFrom(l.length?l:M.lib,b.dataset.pid)}
+  else if(b.dataset.ps){var arr=(M.fst||[]).concat(RA.res),r=arr[+b.dataset.ps];if(r)playStation(r)}
+  PL.sig="";});
+ pr.oninput=function(){if(au.duration)au.currentTime=+pr.value};var sw=$("sideWidgetMusic");if(sw)sw.style.overflowY="auto";
+}
+function panelRender(){
+ var el=$("axPanelList");if(!el)return;
+ var sh=$("axPmShuf"),rp=$("axPmRep");if(sh)sh.textContent="シャッフル:"+(M.shuf?"入":"切");if(rp)rp.textContent="リピート:"+(M.rep==="one"?"1曲":M.rep==="all"?"全曲":"切");
+ var rs='padding:4px 8px;font-size:11px;border-bottom:1px solid #1e293b;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;',q=Q[cidx()]||null,h="";
+ if(PL.mode==="lib"){h=M.lib.map(function(t){var on=q&&q.id===t.id;return'<div data-pid="'+t.id+'" style="'+rs+'color:'+(on?"#22d3ee":"#e2e8f0")+'">'+esc(t.title||t.name)+'</div>'}).join("")||'<div style="padding:6px;font-size:10px;color:#94a3b8">「曲を追加」で端末の曲を選んでください（保存されます）</div>'}
+ else{var arr=(M.fst||[]).concat(RA.res);h=arr.map(function(r,i){var on=q&&q.id==="radio-"+(r.stationuuid||r.name);return'<div data-ps="'+i+'" style="'+rs+'color:'+(on?"#22d3ee":"#e2e8f0")+'">'+esc(r.name)+'</div>'}).join("")||'<div style="padding:6px;font-size:10px;color:#94a3b8">'+(RA.busy?"取得中…":"局が見つかりません")+'</div>'}
+ el.innerHTML=h;
+}
+function fmtT(x){return ft(x||0)}
+function psync(){
+ var q=Q[cidx()]||null,tt=$("musicTitleMain"),aa=$("musicArtistMain");if(!tt)return;
+ var ti=q?(q.title||q.name):"NoTitle";tt.textContent=ti;if(aa)aa.textContent=q?(q.artist||q.album||"アーティスト不明"):"NoName";
+ var sp=document.querySelectorAll("#musicTitleBlock span");if(sp.length)sp[sp.length-1].textContent=ti;
+ var cv=document.querySelector("#musicTitleBlock .bg-slate-900");if(cv){var has=q&&q.art;cv.style.backgroundImage=has?'url("'+q.art+'")':"";cv.style.backgroundSize="cover";cv.style.backgroundPosition="center";Array.prototype.forEach.call(cv.children,function(c){c.style.visibility=has?"hidden":""})}
+ var pi=document.querySelector("#playBtn i");if(pi)pi.className="fa-solid "+(au.src&&!au.paused?"fa-pause":"fa-play");
+ var pr=$("audioProgress");if(pr&&document.activeElement!==pr){if(au.duration&&isFinite(au.duration)){pr.max=Math.floor(au.duration);pr.value=Math.floor(au.currentTime)}else{pr.value=0}}
+ var ts=document.querySelectorAll("#sideWidgetMusic .font-mono span");if(ts.length>1){ts[0].textContent=fmtT(au.currentTime);ts[1].textContent=isFinite(au.duration)?fmtT(au.duration):"--:--"}
+}
+setInterval(function(){panelInit();psync();var sg=M.lib.length+"|"+cidx()+"|"+PL.mode+"|"+RA.res.length+"|"+M.shuf+M.rep+"|"+(M.fst||[]).length;if(sg!==PL.sig){PL.sig=sg;panelRender()}},700);
+/* ===== 10. INTELLIGENCE: 追加コマンド・できること一覧 ===== */
+function navDom(){var g=function(i){var e=$(i);return e?e.textContent.trim():""};var n=g("destName");return{set:n&&n!=="目的地",name:n,dist:g("destDist"),time:g("destTime")}}
+function nearbyX(tg,label){
+ var p=me()||X.pos();if(!p){X.say("位置が不明です");return}
+ if(!navigator.onLine){X.say("オフラインです");return}
+ fetch("https://overpass-api.de/api/interpreter",{method:"POST",body:"[out:json][timeout:15];nwr"+tg+"(around:4000,"+p.lat+","+p.lon+");out center tags 20;"}).then(function(r){return r.json()}).then(function(j){
+  var a=(j.elements||[]).map(function(e){var la=e.lat!=null?e.lat:e.center&&e.center.lat,lo=e.lon!=null?e.lon:e.center&&e.center.lon,t=e.tags||{};return{display_name:t.name||t.brand||t.operator||label,lat:la,lon:lo,d:la==null?0:hv([la,lo],[p.lat,p.lon])}}).filter(function(x){return x.lat!=null}).sort(function(a,b){return a.d-b.d}).slice(0,8);
+  a.forEach(function(x){x.display_name+=" ("+(x.d<1000?Math.round(x.d)+"m":(x.d/1000).toFixed(1)+"km")+")"});
+  X.geoSet(a);X.say(a.length?label+"は、最寄りで"+a[0].display_name+"です。":"4km以内に"+label+"が見つかりません。");X.render()}).catch(function(){X.say("周辺検索に失敗しました")});
+}
+var NB=[[/ガソリンスタンド|スタンド|給油/,'["amenity"="fuel"]',"ガソリンスタンド"],[/コンビニ/,'["shop"="convenience"]',"コンビニ"],[/トイレ|お手洗い/,'["amenity"="toilets"]',"トイレ"],[/駐車場|パーキング|コインP/,'["amenity"="parking"]',"駐車場"],[/充電|EV/,'["amenity"="charging_station"]',"充電スポット"],[/病院|救急/,'["amenity"~"^(hospital|clinic)$"]',"病院"],[/薬局|ドラッグ/,'["amenity"="pharmacy"]',"薬局"],[/ATM|銀行/,'["amenity"~"^(atm|bank)$"]',"ATM・銀行"],[/駅/,'["railway"="station"]',"駅"],[/カフェ|喫茶/,'["amenity"="cafe"]',"カフェ"],[/警察|交番/,'["amenity"="police"]',"警察署・交番"],[/温泉|銭湯/,'["amenity"="public_bath"]',"温泉・銭湯"],[/ホテル|宿泊/,'["tourism"="hotel"]',"ホテル"],[/レストラン|食事|ご飯|ごはん|ランチ|ファミレス/,'["amenity"="restaurant"]',"レストラン"]];
+function dstr(x){return x.getFullYear()+"年"+(x.getMonth()+1)+"月"+x.getDate()+"日"}
+HK.cmd=function(q){
+ var m,w=X.W&&X.W(),i,t;
+ if(/タイマー/.test(q)){m=q.match(/(\d+)\s*(秒|分|時間)/);if(!m){X.say("「5分タイマー」のように時間を言ってください");return true}var n=+m[1],ms=n*(m[2]==="秒"?1e3:m[2]==="分"?6e4:36e5),lb=n+m[2]+"のタイマー";setTimeout(function(){X.alertAdd("warn",lb+"が終了しました","tm"+Date.now());X.say(lb+"が終了しました")},ms);X.say(lb+"を開始しました");return true}
+ if(/駐車.*(記録|覚え|保存|メモ)/.test(q)){var p=me()||X.pos();if(!p){X.say("位置が不明です");return true}try{localStorage.setItem("axion_park",JSON.stringify({lat:p.lat,lon:p.lon,t:Date.now()}))}catch(e){}X.say("現在地を駐車位置として記録しました");return true}
+ if(/駐車.*(場所|位置)|車.*どこ/.test(q)){var pk=null;try{pk=JSON.parse(localStorage.getItem("axion_park"))}catch(e){}if(!pk){X.say("駐車位置は記録されていません");return true}var me2=me()||X.pos(),d=me2?hv([pk.lat,pk.lon],[me2.lat,me2.lon]):null;X.geoSet([{display_name:"駐車位置 "+new Date(pk.t).toLocaleString("ja-JP"),lat:pk.lat,lon:pk.lon}]);X.say("駐車位置は"+(d!=null?(d<1000?Math.round(d)+"メートル":(d/1000).toFixed(1)+"キロ")+"の距離です。":"記録済みです。")+"一覧の「目的地」ボタンで案内できます。");X.render();return true}
+ if(/ここはどこ|今どこ|現在地/.test(q)){var pp=me()||X.pos();if(!pp){X.say("位置が不明です");return true}jget("https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=16&accept-language=ja&lat="+pp.lat+"&lon="+pp.lon).then(function(r){X.say("現在地は"+(r.display_name||"不明").split(",").slice(0,3).join(" ")+"付近です")}).catch(function(){X.say("住所を取得できませんでした")});return true}
+ if(/到着|何時に着|残り|あと何|あとどれ/.test(q)){var nd=navDom();X.say(nd.set?"目的地は"+nd.name+"、残り"+(nd.dist||"不明")+"、"+(nd.time||"到着時刻は不明")+"です。":"目的地が設定されていません。");return true}
+ if(/明日/.test(q)&&/天気|気温|雨/.test(q)){if(!w){X.say("天気データがありません");return true}var d1=w.daily;X.say("明日は"+X.wc(d1.weather_code[1])[0]+"、最高"+Math.round(d1.temperature_2m_max[1])+"度、最低"+Math.round(d1.temperature_2m_min[1])+"度、降水確率"+(d1.precipitation_probability_max[1]||0)+"%です。");return true}
+ if(/週間|今週|1週間/.test(q)&&/天気|予報/.test(q)){if(!w){X.say("天気データがありません");return true}var dd=w.daily;t="";for(i=0;i<5;i++)t+=(i===0?"今日":i===1?"明日":(new Date(dd.time[i]).getMonth()+1)+"月"+new Date(dd.time[i]).getDate()+"日")+X.wc(dd.weather_code[i])[0]+"、";X.say(t+"の予報です。");return true}
+ if(/雨.*(いつ|止|降)|いつ.*雨|傘/.test(q)){if(!w){X.say("天気データがありません");return true}var hh=w.hourly,s0=Math.max(0,hh.time.findIndex(function(x){return x>=new Date().toISOString().slice(0,13)})),raining=w.current.precipitation>0,f=-1;for(i=s0;i<s0+24&&i<hh.time.length;i++){if(raining?(hh.precipitation_probability[i]||0)<30:(hh.precipitation_probability[i]||0)>=50){f=i;break}}
+  X.say(f<0?(raining?"24時間以内は雨が続きそうです。":"今後24時間は雨の可能性は低めです。"):(raining?"雨は"+hh.time[f].slice(11,13)+"時ごろ止みそうです。":hh.time[f].slice(11,13)+"時ごろから雨の可能性があります。"));return true}
+ if(/(今|何)時|時間は|日付|何日|曜日/.test(q)&&!/到着|残り/.test(q)){var nw=new Date();X.say(dstr(nw)+nw.toLocaleDateString("ja-JP",{weekday:"long"})+"、"+nw.getHours()+"時"+nw.getMinutes()+"分です。");return true}
+ for(i=0;i<NB.length;i++)if(NB[i][0].test(q)&&!/残量/.test(q)){nearbyX(NB[i][1],NB[i][2]);return true}
+ if(/ガソリン|燃料|残量/.test(q)){var tk=S.veh.tank;X.say(tk===""||tk==null?"燃料残量のデータがありません。車両画面で手動入力できます。":"燃料残量は"+tk+"パーセントです（手動入力値）。");return true}
+ if(/点検|車検/.test(q)){X.say("点検は"+(S.veh.insp||"未設定")+"、車検は"+(S.veh.shaken||"未設定")+"です。");return true}
+ if(/ドライブ|まとめ|要約|サマリ/.test(q)){if(R.brief)X.say(R.brief);else if(dest()){R.speak=true;X.say("ルートを解析します");analyze()}else X.say("目的地が設定されていません");return true}
+ if(/休憩/.test(q)&&R.rest&&R.rest.length){X.say("約"+Math.round(R.rest[0].at)+"キロ付近の"+R.rest[0].s.n+"がおすすめです。");return true}
+ if(/ラジオ/.test(q)){var nm=q.replace(/ラジオ|を|で|かけて|流して|再生|聞きたい|聴きたい|つけて/g,"").trim();X.say("ラジオ局を探します");radioSearch(nm,"",function(r){if(r.length){playStation(r[0]);X.say(r[0].name+"を再生します")}else X.say("局が見つかりませんでした")});return true}
+ if(/次の曲|次へ|スキップ/.test(q)){step(1);X.say("次の曲");return true}
+ if(/前の曲|前へ|戻って/.test(q)){step(-1);X.say("前の曲");return true}
+ if(/シャッフル/.test(q)){M.shuf=!M.shuf;msave();X.say("シャッフルを"+(M.shuf?"入":"切")+"にしました");return true}
+ if(/リピート/.test(q)){M.rep=M.rep==="off"?"all":M.rep==="all"?"one":"off";msave();X.say("リピート: "+(M.rep==="one"?"1曲":M.rep==="all"?"全曲":"切"));return true}
+ if(/音量/.test(q)){m=q.match(/(\d+)/);S.vol=m?Math.max(0,Math.min(100,+m[1])):/下げ|小さ/.test(q)?Math.max(0,S.vol-15):Math.min(100,S.vol+15);au.volume=S.vol/100;X.save();X.say("音量 "+S.vol);return true}
+ if(/再生|かけて|流して|再開|音楽/.test(q)&&!/停止/.test(q)){if(au.src){au.play();X.say("再生します")}else if(M.lib.length){var l=list();playFrom(l,l[0].id);X.say("ライブラリを再生します")}else X.say("曲がありません。MEDIA画面で曲を追加してください");return true}
+ if(/停止|止めて|一時停止|ストップ/.test(q)){au.pause();X.say("停止しました");return true}
+ if(/ダークモード|暗く/.test(q)){S.theme="dark";X.save();X.render();X.say("ダークテーマにしました");return true}
+ if(/ライトモード|明るく/.test(q)){S.theme="light";X.save();X.render();X.say("ライトテーマにしました");return true}
+ if(/通知.*(読|教|確認して)|アラート.*(読|教)/.test(q)){var un=S.alerts.filter(function(a){return!a.ack});X.say(un.length?"未確認の通知は"+un.length+"件。"+un.slice(0,3).map(function(a){return a.msg}).join("。"):"未確認の通知はありません。");return true}
+ if(/(通知|アラート).*(既読|全部|すべて|消)/.test(q)){S.alerts.forEach(function(a){a.ack=true});X.save();X.render();X.say("すべて確認済みにしました");return true}
+ if(/ヘルプ|何ができる|使い方|できること/.test(q)){X.say("天気、到着時刻、周辺検索、音楽やラジオの操作、タイマー、駐車位置の記録、通知の読み上げなどができます。画面のボタンからも実行できます。");return true}
+ if(/(.+)に寄(って|りたい|る)|経由.*?(.+)/.test(q)){var key=q.replace(/に寄って|に寄りたい|に寄る|経由地?|を|で|して|追加/g,"").trim();if(key){jget("https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&countrycode=jp&accept-language=ja&q="+encodeURIComponent(key)).then(function(r){X.geoSet(r);X.say(r.length?r.length+"件見つかりました。「経由地」ボタンで追加できます。":"見つかりませんでした");X.render()}).catch(function(){X.say("検索に失敗しました")});return true}}
+ return false;
+};
+var oldI=V.INTELLIGENCE;
+var CAP=[["天気",["今日の天気","明日の天気","週間予報","雨はいつ降る？"]],["ナビ",["到着時刻は？","ドライブ情報","休憩したい","ここはどこ？","駐車位置を記録","駐車した場所"]],["周辺検索",["ガソリンスタンド","コンビニ","トイレ","駐車場","充電スポット","病院","薬局","ATM","駅","カフェ"]],["音楽",["再生","停止","次の曲","前の曲","シャッフル","音量を上げて","音量を下げて","ラジオをかけて"]],["車両・システム",["燃料残量は？","点検予定","通知を読み上げ","通知をすべて確認","システム状態","ダークモード","ライトモード","5分タイマー","10分タイマー"]]];
+V.INTELLIGENCE=function(){
+ return '<div class=axg style="margin-bottom:10px"><div class=axc style="grid-column:1/-1"><h3>できること（タップで実行）</h3>'+CAP.map(function(g){return'<div class=axs style="margin:8px 0 2px">'+g[0]+'</div><div class=axrow2>'+g[1].map(function(c){return'<button class="axb g" data-x=cmd data-cq="'+esc(c)+'">'+esc(c)+'</button>'}).join("")+'</div>'}).join("")+aiNote()+'<div class=axs style="margin-top:10px">音声認識はブラウザ対応状況に依存します。外部検索(OpenStreetMap等)はオンライン時のみ。</div></div></div>'+oldI();
+};
+X.root.addEventListener("click",function(e){
+ var t=e.target.closest("[data-x]");if(!t)return;var a=t.dataset.x,r,u;
+ if(a==="cmd"){X.cmd(t.dataset.cq)}
+ else if(a==="eplay"||a==="erec"){u=a==="eplay"?($("axEu")||{}).value:EMB.recent[+t.dataset.i];var inf=embedInfo(u);if(!inf){X.say("対応していないURLです（Spotify / YouTube / Apple Music / SoundCloud）");return}embedSet(inf);EMB.recent=[u].concat(EMB.recent.filter(function(x){return x!==u})).slice(0,5);try{localStorage.setItem("axion_embed",JSON.stringify(EMB.recent))}catch(_){}X.render()}
+ else if(a==="eclose"){embedSet(null);X.render()}
+ else if(a==="rsearch"){var q=$("axRq");radioSearch(q?q.value.trim():"","")}
+ else if(a==="rtag")radioSearch("",TG[t.dataset.t]||"");
+ else if(a==="rplay"){r=stOf(t);if(r)playStation(r)}
+ else if(a==="rfav"){r=stOf(t);if(!r)return;var ix=-1;(M.fst||[]).forEach(function(f,k){if(f.url_resolved===r.url_resolved)ix=k});if(ix>=0)M.fst.splice(ix,1);else M.fst.push({name:r.name,url_resolved:r.url_resolved,favicon:r.favicon,tags:r.tags,stationuuid:r.stationuuid,hls:r.hls});msave();X.render()}
+});
+
+/* ===== 11. AI (Google Gemini / 無料APIキー) ===== */
+var AI={busy:false,last:0,hist:[],err:"",models:[],ok:"",used:""};
+var SYS="あなたは車載ナビ「AXION CORE」の音声アシスタントです。運転中のドライバーに、日本語で、短く(2〜3文)、はっきり答えてください。箇条書きや記号は使わないでください。運転中に画面操作を促さないでください。分からないことは推測せず、分からないと答えてください。交通規制・渋滞・料金など最新の公式情報は断定せず、確認を促してください。";
+function aiModel(){return String(S.aiModel||"gemini-flash-latest").replace(/^models\//,"")}
+function aiNote(){return'<div class=axs style="margin-top:10px">AI: '+(S.aiKey?"有効（"+esc(aiModel())+"）。入力欄に質問を入れて実行すると答えます。先頭に「AI」を付けると必ずAIが答えます。":"未設定。設定画面でGeminiの無料APIキーを入れると使えます。")+(AI.busy?" 考え中…":"")+'</div><div class=axrow2><button class="axb g" data-go="SETTINGS">AI設定を開く</button></div>'}
+function aiCtxText(){
+ if(S.aiCtx===false)return"";
+ var t=[],w=X.W&&X.W(),nd=navDom(),p=me()||X.pos(),n=new Date();
+ t.push("現在時刻: "+n.getHours()+"時"+n.getMinutes()+"分");
+ if(w)t.push("現在地の天気: "+X.wc(w.current.weather_code)[0]+" "+Math.round(w.current.temperature_2m)+"度 風"+Math.round(w.current.wind_speed_10m)+"km/h");
+ if(p)t.push("現在地の座標: "+p.lat.toFixed(3)+","+p.lon.toFixed(3));
+ if(nd.set)t.push("目的地: "+nd.name+" 残り"+nd.dist+" "+nd.time);
+ if(S.veh&&S.veh.tank)t.push("燃料残量(手動入力値): "+S.veh.tank+"%");
+ return"【車の状況】\n"+t.join("\n")+"\n\n【質問】\n";
+}
+var AIFB=["gemini-flash-latest","gemini-3.8-flash","gemini-3.5-flash","gemini-2.5-flash"];
+function aiCall(models,i,body){
+ var md=models[i];
+ return fetch("https://generativelanguage.googleapis.com/v1beta/models/"+encodeURIComponent(md)+":generateContent",{method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":String(S.aiKey).replace(/[\s\u200B-\u200D\uFEFF]/g,"")},body:JSON.stringify(body)}).then(function(r){return r.text().then(function(tx){
+  var j=null;try{j=JSON.parse(tx)}catch(_){}
+  if(!r.ok){var e=new Error((j&&j.error&&j.error.message)||tx.slice(0,120)||("HTTP "+r.status));e.code=r.status;throw e}
+  if(!j)throw new Error("応答を解釈できません");
+  AI.used=md;return j})}).catch(function(e){if((e.code===404||e.code===503)&&i+1<models.length)return aiCall(models,i+1,body);throw e});
+}
+function aiAsk(q){
+ if(!S.aiKey){X.say("AIのキーが未設定です。設定画面でGeminiのAPIキーを入力してください。");return}
+ if(!navigator.onLine){X.say("オフラインのためAIは使えません");return}
+ var now=Date.now();if(AI.busy)return;if(now-AI.last<2000){X.say("少し待ってからもう一度お願いします");return}
+ AI.busy=true;AI.last=now;AI.err="";X.render();
+ var body={systemInstruction:{parts:[{text:SYS}]},contents:AI.hist.concat([{role:"user",parts:[{text:aiCtxText()+q}]}]),generationConfig:{maxOutputTokens:400,temperature:0.6}};
+ var models=[aiModel()].concat(AIFB.filter(function(x){return x!==aiModel()}));
+ aiCall(models,0,body).then(function(j){
+  var c=j.candidates&&j.candidates[0],tx=c&&c.content&&c.content.parts?c.content.parts.map(function(p){return p.text||""}).join("").replace(/[*#`]/g,"").trim():"";
+  if(!tx)throw new Error(j.promptFeedback&&j.promptFeedback.blockReason?"安全フィルタにより回答できません":"回答が空でした");
+  if(AI.used&&AI.used!==aiModel()){S.aiModel=AI.used;X.save()}
+  AI.hist.push({role:"user",parts:[{text:q}]},{role:"model",parts:[{text:tx}]});AI.hist=AI.hist.slice(-8);AI.busy=false;AI.ok="";X.say(tx);
+ }).catch(function(e){
+  AI.busy=false;
+  var det=e.code?("HTTP "+e.code+" "+String(e.message).slice(0,90)):(e.name==="TypeError"?"通信できませんでした（ネットワーク・ブロック・CORSの可能性）":String(e.message).slice(0,90));
+  var m=e.code===429?"AIの利用上限に達しました":(e.code===400||e.code===401||e.code===403)?"APIキーが無効か、権限がありません":e.code===404?"モデルが見つかりません":"AIの呼び出しに失敗しました";
+  AI.err=m+"（"+det+"）";X.alertAdd("warn",AI.err,"ai"+(e.code||"x"));X.say(AI.err);
+ });
+}
+var oldCmd=HK.cmd;
+HK.cmd=function(q){
+ var am=q.match(/^(?:AI|ＡＩ|ai|エーアイ|ジェミニ|Gemini)[、,\s:：]*(.*)$/i);
+ if(am){aiAsk(am[1]||q);return true}
+ var r=oldCmd(q);
+ if(!r&&S.aiKey&&q.length>=2){aiAsk(q);return true}
+ return r;
+};
+var oldS=V.SETTINGS;
+V.SETTINGS=function(){
+ return oldS()+'<div class=axc style="margin-top:10px"><h3>AI（Google Gemini） '+tag(S.aiKey?"live":"off",S.aiKey?"設定済み":"未設定")+'</h3><div class=axs>Google AI Studioで無料のAPIキーを発行して貼り付けてください。キーはこの端末のブラウザにだけ保存され、HTMLには含まれません。</div>'+
+ '<div class=axr><span>APIキー</span><input type=password data-ai=aiKey value="'+esc(S.aiKey||"")+'" autocomplete=off size=16></div>'+
+ '<div class=axr><span>モデル</span><input data-ai=aiModel value="'+esc(S.aiModel||"gemini-flash-latest")+'" size=18></div>'+
+ '<div class=axr><span>位置・目的地・天気をAIに送る</span><input type=checkbox data-ai=aiCtx '+(S.aiCtx===false?"":"checked")+'></div>'+
+ '<div class=axrow2><button class=axb data-x=aitest>接続テスト</button><button class="axb g" data-x=aimodels>モデル一覧を取得</button></div>'+
+ (AI.ok?'<div class=axs>'+esc(AI.ok)+'</div>':"")+(AI.err?'<div class=axs style="color:#f87171">'+esc(AI.err)+'</div>':"")+
+ AI.models.map(function(n){return'<div class=axr><span>'+esc(n)+'</span><button class="axb g" data-x=aipick data-m="'+esc(n)+'">使う</button></div>'}).join("")+
+ '<div class=axs>無料枠で送った内容は、Googleの製品改善に使われることがあります。回数制限を超えると利用できなくなります（429エラー）。</div></div>';
+};
+X.root.addEventListener("click",function(e){
+ var t=e.target.closest("[data-x]");if(!t)return;var a=t.dataset.x;
+ if(a==="aitest"){aiAsk("接続テストです。「接続できました」と一言で答えてください。")}
+ else if(a==="aipick"){S.aiModel=t.dataset.m;X.save();X.render()}
+ else if(a==="aimodels"){
+  if(!S.aiKey){AI.err="先にAPIキーを入力してください";X.render();return}
+  AI.err="";AI.ok="取得中…";X.render();
+  fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=100",{headers:{"x-goog-api-key":String(S.aiKey).replace(/[\s\u200B-\u200D\uFEFF]/g,"")}}).then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error((j.error&&j.error.message)||r.status);return j})}).then(function(j){
+   AI.models=(j.models||[]).filter(function(x){return(x.supportedGenerationMethods||[]).indexOf("generateContent")>-1&&/gemini/i.test(x.name)&&/flash/i.test(x.name)}).map(function(x){return x.name.replace(/^models\//,"")}).slice(0,12);AI.ok=AI.models.length?"使えるモデル("+AI.models.length+"件)":"対応モデルが見つかりません";X.render()}).catch(function(){AI.ok="";AI.err="モデル一覧の取得に失敗しました（キーを確認してください）";X.render()});
+ }
+});
+X.root.addEventListener("change",function(e){var k=e.target.dataset&&e.target.dataset.ai;if(!k)return;S[k]=e.target.type==="checkbox"?e.target.checked:(k==="aiKey"?e.target.value.replace(/[\s\u200B-\u200D\uFEFF]/g,""):e.target.value.trim());X.save();X.render()});
+
+/* ===== 12. HOME再設計・壁紙・全画面の統一 ===== */
+(function(){var P=X.P;
+ P.fuel='<path d="M5 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16M4 21h12M15 9h2l2 2v6a1.5 1.5 0 0 0 3 0V9l-3-3"/><path d="M7 7h6v4H7z"/>';
+ P.road='<path d="M7 3L3 21M17 3l4 18M12 4v3M12 11v3M12 18v3"/>';
+ P.gauge='<path d="M4 18a9 9 0 1 1 16 0"/><path d="M12 14l4-5"/>';
+ P.thermo='<path d="M10 14V5a2 2 0 0 1 4 0v9a4 4 0 1 1-4 0z"/>';
+ P.tire='<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><path d="M12 3v6M12 15v6M3 12h6M15 12h6"/>';
+ P.wrench='<path d="M14 6a4 4 0 0 0-5 5L3 17l4 4 6-6a4 4 0 0 0 5-5l-3 3-3-1-1-3z"/>';
+ P.gps='<circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><path d="M12 1v3M12 20v3M1 12h3M20 12h3"/>';
+ P.pin='<path d="M12 21s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="9" r="2.5"/>';
+ P.image='<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 9"/>';
+ P.route='<circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3.5 3.5 0 0 0 0-7H9a3.5 3.5 0 0 1 0-7h6.5"/>';
+})();
+var FUJI='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#04081a"/><stop offset=".5" stop-color="#16224e"/><stop offset=".78" stop-color="#7a4b62"/><stop offset="1" stop-color="#e58a4a"/></linearGradient><linearGradient id="l" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4a3050"/><stop offset=".35" stop-color="#141a38"/><stop offset="1" stop-color="#050813"/></linearGradient><linearGradient id="m" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1a2145"/><stop offset="1" stop-color="#05070f"/></linearGradient></defs><rect width="1600" height="900" fill="url(#s)"/><g fill="#fff" opacity=".8"><circle cx="260" cy="110" r="1.6"/><circle cx="540" cy="70" r="1.2"/><circle cx="980" cy="120" r="1.5"/><circle cx="1260" cy="60" r="1.3"/><circle cx="1450" cy="150" r="1.6"/><circle cx="130" cy="220" r="1.2"/></g><path d="M0 650 L260 625 C480 610 640 500 780 345 L800 328 L830 326 L852 342 C990 490 1140 600 1340 622 L1600 650 L1600 900 L0 900Z" fill="url(#m)"/><path d="M742 408 L800 332 L830 328 L860 344 L915 410 L880 392 L850 424 L822 388 L790 420 L765 394Z" fill="#d9c3dc" opacity=".8"/><rect y="650" width="1600" height="250" fill="url(#l)"/><g fill="#ffb067" opacity=".8"><circle cx="420" cy="662" r="2"/><circle cx="700" cy="660" r="2"/><circle cx="960" cy="664" r="2"/><circle cx="1180" cy="662" r="2"/><circle cx="1330" cy="660" r="2"/></g></svg>';
+var WPS={fuji:{n:"富士の夕景",css:"url('data:image/svg+xml,"+encodeURIComponent(FUJI)+"')"},midnight:{n:"ミッドナイト",css:"radial-gradient(1200px 700px at 20% 0%,#16336b 0,#070d1f 60%,#03050c 100%)"},aurora:{n:"オーロラ",css:"linear-gradient(160deg,#04111f 0%,#0b3b4a 40%,#1a2a6b 70%,#2a0f4a 100%)"},dusk:{n:"ダスク",css:"linear-gradient(180deg,#0b1030 0%,#3a2a6b 45%,#c0643f 100%)"},carbon:{n:"カーボン",css:"repeating-linear-gradient(45deg,#0c0d10 0 6px,#121317 6px 12px)"}};
+function applyWp(){
+ var id=S.wp||"fuji",css;
+ if(id==="custom"){var d=null;try{d=localStorage.getItem("axion_wp_img")}catch(e){}css=d?"url('"+d+"')":WPS.fuji.css}else css=(WPS[id]||WPS.fuji).css;
+ X.root.style.setProperty("--axwp",css);X.root.style.setProperty("--axdim",S.wpDim==null?0.25:S.wpDim);
+}
+function wpUpload(f){
+ if(!f)return;var img=new Image(),u=URL.createObjectURL(f);
+ img.onload=function(){var s=Math.min(1,1600/Math.max(img.width,img.height)),c=document.createElement("canvas");c.width=Math.round(img.width*s);c.height=Math.round(img.height*s);c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+  try{localStorage.setItem("axion_wp_img",c.toDataURL("image/jpeg",0.78));S.wp="custom";X.save();applyWp();X.render()}catch(e){X.alertAdd("warn","壁紙が大きすぎて保存できませんでした","wpbig")}
+  URL.revokeObjectURL(u)};
+ img.onerror=function(){X.alertAdd("warn","画像を読み込めませんでした","wpimg")};img.src=u;
+}
+var PN={key:"",name:"",busy:false};
+function placeName(){
+ var p=me()||X.pos();if(!p)return"";var k=p.lat.toFixed(1)+","+p.lon.toFixed(1);
+ if(PN.key!==k&&!PN.busy&&navigator.onLine){PN.busy=true;jget("https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=10&accept-language=ja&lat="+p.lat+"&lon="+p.lon).then(function(r){var a=r.address||{};PN.name=a.city||a.town||a.village||a.suburb||a.county||a.state||"";PN.key=k}).catch(function(){PN.key=k;PN.name=""}).then(function(){PN.busy=false;if(X.cur()==="HOME")X.render()})}
+ return PN.name;
+}
+function tile(ic,lb,attr,on,bd){return'<button type="button" class="hm-tile'+(on?" on":"")+'" '+attr+'>'+X.ic(ic,"")+'<span>'+lb+'</span>'+(bd?'<em class="hm-bd">'+bd+'</em>':"")+'</button>'}
+V.HOME=function(){
+ var n=new Date(),w=X.W&&X.W(),c=w&&w.current,pp="--",nd=navDom(),q=Q[cidx()]||null,un=S.alerts.filter(function(a){return!a.ack}),v=S.veh||{};
+ if(w){var tk=new Date().toISOString().slice(0,13),ix=w.hourly.time.findIndex(function(x){return x.slice(0,13)>=tk});pp=(w.hourly.precipitation_probability[Math.max(ix,0)]||0)+"%"}
+ var wx='<div class="hm-wx">'+(c?'<div class="hm-wxi">'+X.wc(c.weather_code)[1]+'</div><div><div class="hm-temp">'+Math.round(c.temperature_2m)+'<small>°C</small></div><div class="hm-loc">'+X.ic("pin","1em")+" "+esc(placeName()||"現在地")+'</div><div class="hm-cond">'+X.wc(c.weather_code)[0]+'</div></div><div class="hm-pop"><span>降水確率</span><b>'+pp+'</b></div>':'<div class="hm-cond">天気を取得中…</div>')+'</div>';
+ var hero='<section class="hm-hero"><div><div class="hm-time" id="axClk">'+pad(n.getHours())+":"+pad(n.getMinutes())+'</div><div class="hm-date">'+n.toLocaleDateString("ja-JP",{month:"long",day:"numeric",weekday:"short"})+'</div></div>'+wx+'</section>';
+ var tiles='<div class="hm-tiles">'+tile("nav","ナビ",'data-x="navi"',true)+tile("route","ルート",'data-go="NAVIGATION"')+tile("music","ミュージック",'data-go="MEDIA"')+tile("cloud","天気",'data-go="WEATHER"')+tile("car","車両情報",'data-go="VEHICLE"')+tile("spark","AI・情報",'data-go="INTELLIGENCE"')+tile("bell","通知",'data-go="ALERT"',false,un.length||"")+tile("gear","設定",'data-go="SETTINGS"')+'</div>';
+ var dc='<button type="button" class="hm-card" data-x="navi"><h4>目的地</h4>'+(nd.set?'<div class="hm-big">'+esc(nd.name)+'</div><div class="hm-sub">残り '+esc(nd.dist||"--")+'</div><div class="hm-sub">'+esc(nd.time||"")+'</div>':'<div class="hm-big">未設定</div><div class="hm-sub">ナビで目的地を設定</div>')+'</button>';
+ var mc='<div class="hm-card"><h4>ミュージック</h4><div class="hm-mus">'+(q&&q.art?'<img class="axcov hm-cov" src="'+esc(q.art)+'">':'<div class="axcov hm-cov"></div>')+'<div style="min-width:0"><div class="hm-big" style="font-size:16px">'+esc(q?(q.title||q.name):"停止中")+'</div><div class="hm-sub">'+esc(q&&q.artist||"")+'</div></div></div><div class="hm-ctl"><button type="button" class="axb g" data-x="mprev">[[prev]]</button><button type="button" class="axb" data-x="mtog">'+(au.src&&!au.paused?"[[pause]]":"[[play]]")+'</button><button type="button" class="axb g" data-x="mnext">[[next]]</button><button type="button" class="axb g" data-go="MEDIA">[[music]]</button></div></div>';
+ var nc='<button type="button" class="hm-card hm-notif" data-go="ALERT"><h4>通知</h4><div class="hm-ncount'+(un.length?"":" zero")+'">'+un.length+'</div></button>';
+ function tv(k){var x=v[k];if(x===""||x==null)return'<b class="hm-tv">—</b>';var low=parseFloat(x)<200;return'<b class="hm-tv'+(low?" low":"")+'">'+esc(x)+'<small>kPa</small></b>'}
+ var tc='<button type="button" class="hm-card hm-tires" data-go="VEHICLE"><h4>タイヤ空気圧</h4><div class="hm-tg"><div class="hm-tcol">'+tv("tFL")+tv("tRL")+'</div><svg class="hm-car" viewBox="0 0 40 72" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="4" width="24" height="64" rx="11"/><path d="M12 22h16M12 50h16"/><rect x="3" y="12" width="5" height="12" rx="2" fill="currentColor"/><rect x="32" y="12" width="5" height="12" rx="2" fill="currentColor"/><rect x="3" y="48" width="5" height="12" rx="2" fill="currentColor"/><rect x="32" y="48" width="5" height="12" rx="2" fill="currentColor"/></svg><div class="hm-tcol">'+tv("tFR")+tv("tRR")+'</div></div></button>';
+ var d1=dleft(v.insp),d2=dleft(v.shaken),dn=[d1,d2].filter(function(x){return x!==null}),mn=dn.length?Math.min.apply(null,dn):null,has=function(x){return x!==""&&x!=null},fuel=parseFloat(v.tank);
+ function si(i,lb,val,bar){return'<div class="hm-si">'+X.ic(i,"")+'<div><div class="hm-sl">'+lb+'</div><div class="hm-sv">'+val+'</div>'+(bar!=null?'<div class="hm-bar"><i style="width:'+bar+'%"></i></div>':"")+'</div></div>'}
+ var strip='<section class="hm-strip"><div class="hm-st">車両状態 '+(S.demo?tag("demo","手動/デモ値"):tag("off","実車データ未接続"))+'</div>'+
+  si("fuel","燃料残量",has(v.tank)?esc(v.tank)+"<small>%</small>":"—",has(v.tank)&&!isNaN(fuel)?Math.max(0,Math.min(100,fuel)):null)+
+  si("road","走行距離",has(v.odo)?esc(v.odo)+"<small> km</small>":"—")+
+  si("gauge","平均燃費",has(v.kmpl)?esc(v.kmpl)+"<small> km/L</small>":"—")+
+  si("gauge","バッテリー",has(v.batt)?esc(v.batt)+"<small>%</small>":"—")+
+  si("wrench","点検・車検",mn===null?"—":(mn<0?"期限超過":"あと"+mn+"日"))+
+  si("thermo","外気温",c?Math.round(c.temperature_2m)+"<small>°C</small>":"—")+'</section>';
+ return'<div class="hm">'+hero+'<section class="hm-main">'+tiles+'<aside class="hm-side">'+dc+'<div class="hm-row">'+mc+nc+tc+'</div></aside></section>'+strip+'</div>';
+};
+var oldS2=V.SETTINGS;
+V.SETTINGS=function(){
+ var cur=S.wp||"fuji";
+ return'<div class="axc" style="margin-bottom:10px"><h3>壁紙・ホーム画面</h3><div class="axrow2">'+Object.keys(WPS).map(function(k){return'<button type="button" class="axwp'+(cur===k?" on":"")+'" data-x="wppick" data-id="'+k+'" style="background:'+WPS[k].css+' center/cover"><span>'+WPS[k].n+'</span></button>'}).join("")+'</div><div class="axrow2" style="margin-top:8px"><label class="axb g" style="display:inline-flex;align-items:center;gap:6px">'+X.ic("image","")+' 画像を選ぶ<input type="file" accept="image/*" id="axWpUp" style="display:none"></label>'+(cur==="custom"?'<span class="axs">自分の画像を使用中</span>':"")+'</div><div class="axr"><span>壁紙の暗さ</span><input type="range" min="0" max="70" data-wp="dim" value="'+Math.round((S.wpDim==null?0.25:S.wpDim)*100)+'"></div><div class="axs">選んだ画像はこの端末に保存されます（自動で縮小します）。</div></div>'+oldS2();
+};
+X.root.addEventListener("click",function(e){
+ var t=e.target.closest("[data-x]");if(!t)return;var a=t.dataset.x;
+ if(a==="navi")X.close();
+ else if(a==="wppick"){S.wp=t.dataset.id;X.save();applyWp();X.render()}
+});
+X.root.addEventListener("input",function(e){if(e.target.dataset&&e.target.dataset.wp==="dim"){S.wpDim=(+e.target.value)/100;X.save();applyWp()}});
+X.root.addEventListener("change",function(e){if(e.target.id==="axWpUp")wpUpload(e.target.files&&e.target.files[0])});
+setInterval(function(){
+ var n=new Date(),t=pad(n.getHours())+":"+pad(n.getMinutes()),a=$("axTopClk"),b=$("axClk"),g=$("axTopGps");
+ if(a)a.textContent=t;if(b)b.textContent=t;
+ if(g){var live=false;try{live=typeof userPos!=="undefined"&&!!userPos}catch(e){}g.innerHTML=X.ic("gps","18")+" "+(live?"GPS":"GPS待ち");g.className=live?"on":""}
+},1000);
+applyWp();
+
+var oldV2=V.VEHICLE;
+V.VEHICLE=function(){
+ var f=S.veh;function ti(k,l){return'<div class="axr"><span>'+l+'</span><span><input data-v="'+k+'" value="'+esc(f[k]||"")+'" size="6"> kPa</span></div>'}
+ return'<div class="axg">'+oldV2()+'<div class="axc"><h3>タイヤ空気圧（4輪・手動入力）</h3>'+ti("tFL","左前")+ti("tFR","右前")+ti("tRL","左後")+ti("tRR","右後")+'<button type="button" class="axb" data-act="vs">保存</button><div class="axs">200kPa未満は黄色で表示し、通知します。</div></div></div>';
+};
+/* ===== 6. イベント ===== */
+function ix(r){return window.__axRes&&window.__axRes[r]}
+function nm(r){return String(r.display_name||"").split(",")[0]}
+X.root.addEventListener("click",function(e){
+ var t=e.target.closest("[data-x]");if(!t)return;var a=t.dataset.x,i=+t.dataset.i,r,k;
+ if(a==="dest"){r=ix(i);if(!r)return;if(typeof setDestinationFromLatLng!=="function"){X.say("ナビ機能が見つかりません");return}X.close();R.d=null;R.park=null;setDestinationFromLatLng(+r.lat,+r.lon)}
+ else if(a==="wp"||a==="wsadd"){r=a==="wp"?ix(i):WS.res[i];if(!r)return;if(!dest()){X.say("先に目的地を設定してください");return}if(typeof addWaypoint!=="function")return;var ok=addWaypoint(+r.lat,+r.lon,r.display_name||"");R.d=null;X.say(ok?"経由地を追加しました":"追加できませんでした");X.render()}
+ else if(a==="wsearch"){var q=$("axWq");WS.q=q?q.value:"";if(!WS.q||!navigator.onLine)return;jget("https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&countrycodes=jp&accept-language=ja&q="+encodeURIComponent(WS.q)).then(function(j){WS.res=j;X.render()}).catch(function(){X.alertAdd("warn","経由地検索失敗","wsf")})}
+ else if(a==="wpdel"){try{waypointsList.splice(i,1);renderWaypointMarkers();applyWaypointChange();R.d=null}catch(_){}X.render()}
+ else if(a==="wpup"||a==="wpdn"){try{k=a==="wpup"?i-1:i+1;if(k>=0&&k<waypointsList.length){var tmp=waypointsList[i];waypointsList[i]=waypointsList[k];waypointsList[k]=tmp;renderWaypointMarkers();applyWaypointChange();R.d=null}}catch(_){}X.render()}
+ else if(a==="analyze")analyze();
+ else if(a==="brief"){if(R.brief)X.say(R.brief);else analyze()}
+ else if(a==="rdprev")rdSet(RD.i-1);else if(a==="rdnext")rdSet(RD.i+1);
+ else if(a==="rdplay"){if(RD.tm){clearInterval(RD.tm);RD.tm=null}else RD.tm=setInterval(function(){if(X.cur()!=="WEATHER"){clearInterval(RD.tm);RD.tm=null;return}rdSet(RD.i+1)},700)}
+ else if(a==="mtog"){if(au.src)au.paused?au.play():au.pause();else if(M.lib.length){var l=list();playFrom(l,l[0].id)}}
+ else if(a==="mnext")step(1);else if(a==="mprev")step(-1);
+ else if(a==="mshuf"){M.shuf=!M.shuf;msave();X.render()}else if(a==="mrep"){M.rep=M.rep==="off"?"all":M.rep==="all"?"one":"off";msave();X.render()}
+ else if(a==="mplay"){var l2=list();playFrom(l2,t.dataset.id)}
+ else if(a==="mfav"||a==="mfavq"){var id=a==="mfav"?t.dataset.id:(Q[cidx()]||{}).id;if(id){if(M.fav[id])delete M.fav[id];else M.fav[id]=1;msave();X.render()}}
+ else if(a==="mdel"){if(confirm("この曲を削除しますか？")){var id2=t.dataset.id;dbq("readwrite",function(s){return s.delete(id2)}).then(function(){M.lib=M.lib.filter(function(x){return x.id!==id2});Object.keys(M.pl).forEach(function(n){M.pl[n]=M.pl[n].filter(function(x){return x!==id2})});delete M.fav[id2];msave();X.render()})}}
+ else if(a==="mnewpl"){var n=prompt("プレイリスト名");if(n&&!M.pl[n]){M.pl[n]=[];M.sel=n;msave();X.render()}}
+ else if(a==="mdelpl"){if(confirm("プレイリストを削除しますか？")){delete M.pl[M.sel];M.sel="ALL";msave();X.render()}}
+ else if(a==="maddpl"){var ks=Object.keys(M.pl);if(!ks.length){X.say("先にプレイリストを作成してください");return}var c=prompt("追加先: "+ks.join(" / "),ks[0]);if(c&&M.pl[c]){if(M.pl[c].indexOf(t.dataset.id)<0)M.pl[c].push(t.dataset.id);msave();X.render()}}
+ else if(a==="mout")outputs();
+});
+X.root.addEventListener("change",function(e){if(e.target.id==="axSel"){M.sel=e.target.value;X.render()}});
+X.root.addEventListener("click",function(e){var b=e.target.closest("[data-act=vs]");if(b)setTimeout(vehCheck,50)});
+})();
+</script>
+<!-- ===== /AXION CORE ===== -->
+<style id="axion-ext2-css">#axRoot{background:linear-gradient(rgba(2,6,16,var(--axdim,.25)),rgba(2,6,16,var(--axdim,.25))),var(--axwp,linear-gradient(#0a1630,#04070f)) center/cover no-repeat !important;font-family:"Noto Sans JP","Hiragino Sans","Yu Gothic",system-ui,sans-serif}
+#axRoot.light{background:linear-gradient(rgba(255,255,255,.62),rgba(255,255,255,.62)),var(--axwp,linear-gradient(#cfd9ea,#eef3fa)) center/cover no-repeat !important;color:#0b1220}
+#axRoot.light .axc,#axRoot.light .hm-card,#axRoot.light .hm-tile{background:rgba(255,255,255,.6);color:#0b1220;border-color:rgba(0,0,0,.12)}
+#axTop{padding:14px 22px 6px;gap:12px}
+#axTop .axlogo{flex:none;filter:drop-shadow(0 2px 8px rgba(80,150,255,.45))}
+#axTop b{font-weight:300;letter-spacing:.42em;font-size:15px;color:#eef4ff}
+#axTitle{font-size:12px;letter-spacing:.22em;color:#7cc4ff;margin-left:6px}
+#axNet{font-size:9px}
+#axTopClk{font-size:18px;font-weight:300;letter-spacing:.06em;color:#fff}
+#axTopGps{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#94a3b8}
+#axTopGps.on{color:#4ade80}
+#axTop button{margin-left:6px;background:linear-gradient(160deg,rgba(255,255,255,.16),rgba(255,255,255,.05));border:1px solid rgba(255,255,255,.22);border-radius:16px;backdrop-filter:blur(14px);color:#fff;font-weight:700;letter-spacing:.08em}
+#axBody{padding:6px 22px 16px}
+#axNav{background:linear-gradient(transparent,rgba(0,0,0,.55));border-top:0;backdrop-filter:blur(10px)}
+#axNav button{border-radius:18px}
+#axNav button.on{background:linear-gradient(180deg,rgba(40,110,255,.4),rgba(20,60,170,.2));border-color:rgba(110,170,255,.7);box-shadow:0 0 18px rgba(50,120,255,.4)}
+#axRoot[data-view=HOME] #axNav{display:none}
+.axc{background:linear-gradient(160deg,rgba(255,255,255,.13),rgba(255,255,255,.04));border:1px solid rgba(255,255,255,.17);border-radius:22px;backdrop-filter:blur(20px) saturate(140%);-webkit-backdrop-filter:blur(20px) saturate(140%);box-shadow:0 10px 30px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.18)}
+.axb{border-radius:14px;background:linear-gradient(180deg,#3b82f6,#1d4ed8);box-shadow:0 4px 16px rgba(37,99,235,.35)}
+.axb.g{background:linear-gradient(160deg,rgba(255,255,255,.16),rgba(255,255,255,.05));border:1px solid rgba(255,255,255,.18);box-shadow:none}
+#axRoot input,#axRoot select{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);border-radius:12px}
+.axwp{width:104px;height:64px;border-radius:14px;border:2px solid rgba(255,255,255,.2);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:flex-end;padding:6px;text-shadow:0 1px 6px #000}
+.axwp.on{border-color:#60a5fa;box-shadow:0 0 14px rgba(60,130,255,.6)}
+.hm{display:grid;gap:clamp(10px,2vh,22px);animation:axIn .35s}
+.hm-hero{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;padding:2px 4px}
+.hm-time{font-size:clamp(64px,12vw,150px);font-weight:200;line-height:.95;letter-spacing:.02em;text-shadow:0 4px 30px rgba(0,0,0,.5)}
+.hm-date{font-size:clamp(18px,2.4vw,30px);font-weight:300;margin-top:8px;opacity:.92}
+.hm-wx{display:flex;align-items:center;gap:clamp(10px,2vw,22px)}
+.hm-wxi{font-size:clamp(52px,7vw,92px);line-height:1;filter:drop-shadow(0 4px 14px rgba(0,0,0,.4))}
+.hm-temp{font-size:clamp(38px,5.5vw,70px);font-weight:200;line-height:1}.hm-temp small{font-size:.5em}
+.hm-loc,.hm-cond{font-size:clamp(13px,1.5vw,18px);opacity:.92;margin-top:4px}
+.hm-pop{border-left:1px solid rgba(255,255,255,.3);padding-left:clamp(10px,2vw,22px);text-align:center}
+.hm-pop span{font-size:13px;opacity:.85;display:block}.hm-pop b{font-size:clamp(24px,3.2vw,40px);font-weight:300}
+.hm-main{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(250px,1fr);gap:clamp(10px,2vh,22px)}
+@media(max-width:900px){.hm-main{grid-template-columns:1fr}}
+.hm-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:clamp(8px,1.4vw,16px);align-content:start}
+.hm-tile{position:relative;height:clamp(92px,17vh,170px);border-radius:26px;background:linear-gradient(160deg,rgba(255,255,255,.17),rgba(255,255,255,.05));border:1px solid rgba(255,255,255,.2);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;font-weight:700;font-size:clamp(11px,1.4vw,18px);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 12px 30px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.22);transition:transform .15s,box-shadow .2s}
+.hm-tile svg{width:clamp(28px,4vw,50px);height:clamp(28px,4vw,50px);vertical-align:0}
+.hm-tile:active{transform:scale(.96)}
+.hm-tile.on{background:linear-gradient(180deg,rgba(40,110,255,.5),rgba(20,60,170,.25));border-color:rgba(110,170,255,.85);box-shadow:0 0 26px rgba(50,120,255,.55),inset 0 -3px 0 #3b82f6}
+.hm-bd{position:absolute;top:10px;right:12px;background:#ef4444;color:#fff;border-radius:10px;font:700 11px/1 system-ui;font-style:normal;padding:3px 7px}
+.hm-side{display:grid;gap:clamp(8px,1.4vw,14px);align-content:start}
+.hm-card{text-align:left;color:inherit;padding:14px 16px;border-radius:22px;background:linear-gradient(160deg,rgba(255,255,255,.13),rgba(255,255,255,.04));border:1px solid rgba(255,255,255,.17);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 10px 30px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.18);display:block;width:100%}
+.hm-card h4{margin:0 0 6px;font-size:11px;letter-spacing:.18em;color:#7cc4ff;font-weight:800}
+.hm-big{font-size:20px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hm-sub{font-size:12px;opacity:.78;margin-top:2px}
+.hm-mus{display:flex;gap:10px;align-items:center}.hm-cov{width:56px;height:56px;flex:0 0 56px}
+.hm-ctl{display:flex;gap:6px;margin-top:8px}.hm-ctl .axb{padding:8px 14px;min-height:40px;margin:0}
+.hm-strip{display:flex;flex-wrap:wrap;gap:clamp(10px,2vw,26px);align-items:center;padding:14px 20px;border-radius:26px;background:linear-gradient(160deg,rgba(255,255,255,.12),rgba(255,255,255,.03));border:1px solid rgba(255,255,255,.16);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.hm-st{flex:1 0 100%;font-size:11px;letter-spacing:.18em;color:#7cc4ff;font-weight:800}
+.hm-si{display:flex;gap:10px;align-items:center;flex:1 1 130px;min-width:130px}
+.hm-si svg{width:26px;height:26px;color:#9cc7ff;flex:none}
+.hm-sl{font-size:11px;opacity:.75}.hm-sv{font-size:clamp(18px,2.2vw,26px);font-weight:300}.hm-sv small{font-size:.55em;opacity:.8}
+.hm-bar{height:5px;border-radius:3px;background:rgba(255,255,255,.18);margin-top:4px;overflow:hidden;width:120px;max-width:100%}.hm-bar i{display:block;height:100%;background:linear-gradient(90deg,#3b82f6,#7cc4ff)}
+/* ===== 余白の最適化: カードを隙間なく詰める・ボタンを小さく ===== */
+.axg{display:block!important;column-width:330px;column-gap:14px;column-fill:balance}
+.axg>.axc{break-inside:avoid;-webkit-column-break-inside:avoid;display:block;margin:0 0 14px}
+.axg>.axc[style*="grid-column"]{column-span:all}
+.axc{padding:12px 14px;border-radius:18px}
+.axc h3{margin:0 0 6px}
+.axr{padding:5px 0;align-items:center;gap:8px;font-size:13px}
+.axr .axb{min-height:34px;padding:5px 11px;margin:0 0 0 4px;border-radius:10px;font-size:12px;box-shadow:none}
+.axr .axb svg{width:16px;height:16px;vertical-align:-3px}
+.axb{min-height:38px;padding:8px 14px;margin:2px 3px 2px 0}
+.axrow2{gap:5px}
+.axs{margin-top:3px}
+.axcov{width:68px;height:68px;flex:0 0 68px;border-radius:12px}
+#axTop{padding:10px 18px 4px;gap:10px}
+#axTop button{min-height:40px;padding:6px 14px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+#axBody{padding:4px 18px 12px}
+#axNav{padding:5px 8px calc(5px + env(safe-area-inset-bottom,0px));gap:4px}
+#axNav button{min-height:46px;min-width:68px;gap:2px}
+#axNav button svg{width:20px;height:20px}
+.hm-tiles{gap:clamp(8px,1.2vw,14px)}
+.hm-tile{height:clamp(84px,15vh,150px)}
+
+.hm-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:clamp(8px,1.4vw,14px);align-items:stretch}
+.hm-notif{display:flex;flex-direction:column}
+.hm-ncount{margin:auto;width:58px;height:58px;border-radius:50%;background:#ef4444;color:#fff;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;box-shadow:0 0 20px rgba(239,68,68,.5)}
+.hm-ncount.zero{background:rgba(255,255,255,.16);box-shadow:none;font-weight:300}
+.hm-tg{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px}
+.hm-tcol{display:grid;gap:22px;text-align:center}
+.hm-car{width:32px;height:58px;color:#9cc7ff}
+.hm-tv{font-size:20px;font-weight:300}.hm-tv small{font-size:.5em;opacity:.8;margin-left:2px}.hm-tv.low{color:#fbbf24}
+</style><!-- ===== AXION Premium UI: 右メニュー&操作バーのおしゃれ化(形はそのまま・アイコン差し替え) ===== -->
+<style id="axPremiumStyle">
+/* ---- 色(AXION COREの統合ホームと同じ、ガラス+青白の光) ---- */
+#sideWidgetMenu [data-ax],#mapFloatingInfo [data-ax]{--ac:rgb(var(--rgb))}
+[data-ax="core"]{--rgb:124,196,255}[data-ax="settings"]{--rgb:165,180,252}[data-ax="car"]{--rgb:103,232,249}
+[data-ax="weather"]{--rgb:147,197,253}[data-ax="eye"]{--rgb:251,146,60}[data-ax="route"]{--rgb:52,211,153}
+[data-ax="music"]{--rgb:192,132,252}[data-ax="cam"]{--rgb:244,114,182}[data-ax="sonar"]{--rgb:251,191,36}
+[data-ax="ac"]{--rgb:94,234,212}
+[data-ax="b-center"]{--rgb:124,196,255}[data-ax="b-search"]{--rgb:214,230,255}[data-ax="b-chat"]{--rgb:103,232,249}
+[data-ax="b-bolt"]{--rgb:251,191,36}[data-ax="b-menu"]{--rgb:226,232,240}
+
+/* ---- アイコン共通(2トーン+ほんのり発光) ---- */
+svg.axi{width:20px;height:20px;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;overflow:visible;flex:none;filter:drop-shadow(0 0 5px rgba(var(--rgb,124,196,255),.55))}
+svg.axi .a{stroke:var(--ac)} svg.axi .f{fill:var(--ac);fill-opacity:.2;stroke:var(--ac)}
+svg.axi .w{stroke:#fff;stroke-opacity:.95} svg.axi .s{fill:var(--ac);stroke:none} svg.axi .d{stroke:var(--ac);stroke-opacity:.45}
+svg.axi .wf{fill:#fff;fill-opacity:.92;stroke:none}
+.axOld{display:none!important}
+#micStaticIcon.hidden + svg.axi{display:none}
+
+/* ---- 右メニュー ---- */
+html.mc #sidePanel:has(#sideWidgetMenu:not(.hidden)){background:radial-gradient(130% 55% at 100% 0%,rgba(59,130,246,.20),transparent 62%),radial-gradient(100% 50% at 0% 100%,rgba(168,85,247,.13),transparent 62%),#05070d!important;border-left-color:rgba(255,255,255,.10)!important}
+#sideWidgetMenu > div:first-child{letter-spacing:.08em;border-bottom-color:transparent!important;background:linear-gradient(90deg,rgba(124,196,255,0),rgba(124,196,255,.65) 38%,rgba(168,85,247,.5) 72%,rgba(168,85,247,0)) bottom/100% 1px no-repeat}
+#sideWidgetMenu > div:first-child svg.axi{width:17px;height:17px;margin-right:6px;vertical-align:-3px}
+#sideWidgetMenu .space-y-1 > button{position:relative;overflow:hidden;background:linear-gradient(160deg,rgba(255,255,255,.13),rgba(255,255,255,.035)) !important;border:1px solid rgba(255,255,255,.13) !important;box-shadow:0 8px 18px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.16)!important;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);transition:transform .15s,filter .15s,border-color .2s}
+#sideWidgetMenu .space-y-1 > button::before{content:"";position:absolute;left:0;top:18%;bottom:18%;width:3px;border-radius:0 3px 3px 0;background:var(--ac);opacity:.85;box-shadow:0 0 10px var(--ac)}
+#sideWidgetMenu .space-y-1 > button:active{transform:scale(.975);filter:brightness(1.25)}
+#sideWidgetMenu .space-y-1 > button > div > div:first-child{color:#f3f7ff!important;font-weight:700!important;letter-spacing:.02em}
+#sideWidgetMenu .space-y-1 > button > div > div:last-child{color:rgba(190,205,235,.62)!important;letter-spacing:.02em}
+.axTile{width:34px;height:34px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex:none;background:radial-gradient(circle at 28% 18%,rgba(var(--rgb),.42),rgba(var(--rgb),.10) 72%);border:1px solid rgba(var(--rgb),.45);box-shadow:0 0 14px -3px rgba(var(--rgb),.7),inset 0 1px 0 rgba(255,255,255,.28)}
+/* AXION CORE(統合ホーム)ボタンは主役の見た目 */
+#sideWidgetMenu .axCoreBtn{background:linear-gradient(135deg,rgba(59,130,246,.42),rgba(124,196,255,.10) 70%,rgba(168,85,247,.16)) !important;border:1px solid rgba(124,196,255,.6) !important;box-shadow:0 0 24px rgba(59,130,246,.38),0 8px 18px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.3)!important}
+#sideWidgetMenu .axCoreBtn > div > div:first-child{background:linear-gradient(90deg,#fff,#7cc4ff);-webkit-background-clip:text;background-clip:text;color:transparent!important;letter-spacing:.16em!important;font-weight:900!important}
+#sideWidgetMenu .axCoreBtn .axTile{background:linear-gradient(145deg,rgba(124,196,255,.55),rgba(59,130,246,.2));border-color:rgba(160,215,255,.75)}
+#sideWidgetMenu .axCoreBtn::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(105deg,transparent 36%,rgba(255,255,255,.2) 50%,transparent 64%);transform:translateX(-130%);animation:axSheen 6s ease-in-out infinite}
+@keyframes axSheen{0%,55%{transform:translateX(-130%)}100%{transform:translateX(130%)}}
+@media (prefers-reduced-motion:reduce){#sideWidgetMenu .axCoreBtn::after{animation:none;display:none}}
+#sideWidgetMenu .axCoreArrow{width:22px;height:22px;display:flex;align-items:center;justify-content:center;flex:none;border-radius:8px;background:rgba(124,196,255,.16)}
+#sideWidgetMenu .axCoreArrow svg.axi{width:13px;height:13px}
+
+/* ---- 操作バー(形・位置はそのまま。ガラス質感とアイコンだけ) ---- */
+#mapFloatingInfo{background:linear-gradient(180deg,rgba(46,60,92,.62),rgba(14,18,32,.74)) !important;border:1px solid rgba(255,255,255,.2) !important;-webkit-backdrop-filter:blur(22px) saturate(1.4);backdrop-filter:blur(22px) saturate(1.4);box-shadow:0 14px 36px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.3),inset 0 0 22px rgba(124,196,255,.06)!important}
+#mapFloatingInfo #gearBadge{background:linear-gradient(160deg,rgba(255,255,255,.16),rgba(255,255,255,.03)),rgba(8,12,26,.82)!important;box-shadow:0 0 16px -2px currentColor,inset 0 1px 0 rgba(255,255,255,.25)!important}
+#mapFloatingInfo > .h-5.w-0\.5{background:linear-gradient(180deg,transparent,rgba(255,255,255,.34),transparent)!important}
+html:is([data-barpos="right"],[data-barpos="left"]) body:not(.walk-mode) #mapFloatingInfo > .h-5.w-0\.5{background:linear-gradient(90deg,transparent,rgba(255,255,255,.4),transparent)!important}
+#mapFloatingInfo .masterClock{font-variant-numeric:tabular-nums;font-weight:700;background:linear-gradient(180deg,#fff,#bfe3ff);-webkit-background-clip:text;background-clip:text;color:transparent!important;text-shadow:none;filter:drop-shadow(0 0 10px rgba(124,196,255,.45))}
+#mapFloatingInfo button.w-7{background:transparent!important;border:0!important;transition:transform .12s,background .15s}
+#mapFloatingInfo button.w-7:active{background:rgba(255,255,255,.14)!important;transform:scale(.88)}
+#mapFloatingInfo button.w-7 svg.axi{width:20px;height:20px}
+#mapFloatingInfo #btEtcGroup .border-purple-500{border-color:rgba(192,132,252,.65)!important;background:linear-gradient(160deg,rgba(192,132,252,.28),rgba(192,132,252,.06))!important;color:#e9d5ff!important;letter-spacing:.08em;box-shadow:0 0 10px -2px rgba(192,132,252,.6)}
+#btStatusIcon svg.axi{width:17px;height:17px;filter:drop-shadow(0 0 4px currentColor)}
+#btStatusIcon svg.axi .c{stroke:currentColor}#btStatusIcon svg.axi .cf{fill:currentColor;fill-opacity:.18;stroke:currentColor}
+
+/* ---- シンプル版: 光・動き・装飾を外して、フラットに ---- */
+svg.axi{filter:none!important}
+svg.axi .f{fill-opacity:.12}
+svg.axi .d{display:none}
+html.mc #sidePanel:has(#sideWidgetMenu:not(.hidden)){background:#000!important}
+#sideWidgetMenu > div:first-child{background:none!important;letter-spacing:.04em}
+#sideWidgetMenu .space-y-1 > button{background:#17181c!important;border:1px solid rgba(255,255,255,.07)!important;box-shadow:none!important;-webkit-backdrop-filter:none;backdrop-filter:none}
+#sideWidgetMenu .space-y-1 > button::before{display:none}
+#sideWidgetMenu .space-y-1 > button > div > div:last-child{color:rgba(190,200,220,.55)!important}
+.axTile{background:rgba(var(--rgb),.14)!important;border:0!important;box-shadow:none!important;border-radius:11px}
+#sideWidgetMenu .axCoreBtn{background:#14203a!important;border:1px solid rgba(124,196,255,.4)!important;box-shadow:none!important}
+#sideWidgetMenu .axCoreBtn::after{display:none}
+#sideWidgetMenu .axCoreBtn > div > div:first-child{background:none!important;-webkit-background-clip:border-box;color:#fff!important;letter-spacing:.1em!important;font-weight:800!important}
+#sideWidgetMenu .axCoreArrow{background:none}
+#mapFloatingInfo{background:rgba(24,26,32,.82)!important;border:1px solid rgba(255,255,255,.1)!important;box-shadow:0 8px 20px rgba(0,0,0,.4)!important;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+#mapFloatingInfo #gearBadge{background:rgba(255,255,255,.06)!important;box-shadow:none!important}
+#mapFloatingInfo .masterClock{background:none!important;-webkit-background-clip:border-box;color:#fff!important;filter:none;font-weight:600}
+#mapFloatingInfo > .h-5.w-0\.5,html:is([data-barpos="right"],[data-barpos="left"]) body:not(.walk-mode) #mapFloatingInfo > .h-5.w-0\.5{background:rgba(255,255,255,.14)!important}
+#mapFloatingInfo #btEtcGroup .border-purple-500{background:none!important;box-shadow:none!important;letter-spacing:.04em}
+#btStatusIcon svg.axi{filter:none}
+
+/* ---- 色は元どおり(項目ごとの色)。形は落ち着いた細線デザイン+開く時のアニメ ---- */
+#sideWidgetMenu > div:first-child{letter-spacing:.28em;font-weight:400!important;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.3) 30%,rgba(255,255,255,.3) 70%,rgba(255,255,255,0)) bottom/100% 1px no-repeat!important}
+#sideWidgetMenu > div:first-child svg.axi{display:none}
+#sideWidgetMenu .space-y-1 > button{background:linear-gradient(180deg,#16171b,#0d0e11)!important;border:1px solid rgba(255,255,255,.1)!important;border-radius:14px}
+#sideWidgetMenu .space-y-1 > button > div > div:first-child{font-weight:500!important;letter-spacing:.07em}
+#sideWidgetMenu .space-y-1 > button > div > div:last-child{letter-spacing:.05em}
+.axTile{background:none!important;border:1px solid rgba(var(--rgb),.5)!important;border-radius:50%!important}
+#sideWidgetMenu .axCoreBtn{background:linear-gradient(135deg,#142443,#0c1426 70%)!important;border:1px solid rgba(124,196,255,.5)!important}
+#sideWidgetMenu .axCoreBtn > div > div:first-child{letter-spacing:.26em!important;font-weight:500!important}
+#mapFloatingInfo .masterClock{font-weight:300;letter-spacing:.06em}
+#mapFloatingInfo > .h-5.w-0\.5,html:is([data-barpos="right"],[data-barpos="left"]) body:not(.walk-mode) #mapFloatingInfo > .h-5.w-0\.5{background:linear-gradient(90deg,transparent,rgba(255,255,255,.3),transparent)!important}
+/* メニューを開いた時: 見出しがふわっと、カードが右から順番にすっと入る */
+@keyframes axCardIn{from{opacity:0;transform:translateX(26px)}to{opacity:1;transform:none}}
+@keyframes axHdIn{from{opacity:0;letter-spacing:.5em}to{opacity:1}}
+#sideWidgetMenu.axIn > div:first-child{animation:axHdIn .5s ease-out both}
+#sideWidgetMenu.axIn .space-y-1 > button{animation:axCardIn .42s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i,0)*45ms + 60ms)}
+@media (prefers-reduced-motion:reduce){#sideWidgetMenu.axIn > div:first-child,#sideWidgetMenu.axIn .space-y-1 > button{animation:none}}
+
+/* ---- 白黒(モノクロ)版 ---- */
+[data-ax]{--rgb:255,255,255!important}
+svg.axi .w{stroke:#fff}
+svg.axi .f{fill-opacity:.08}
+#axLg stop:last-child{stop-color:#bdbdbd}
+.axTile{border:1px solid rgba(255,255,255,.38)!important}
+#sideWidgetMenu .space-y-1 > button{border:1px solid rgba(255,255,255,.1)!important}
+#sideWidgetMenu .axCoreBtn{background:linear-gradient(135deg,#1f1f22,#0e0e10 70%)!important;border:1px solid rgba(255,255,255,.5)!important}
+#sideWidgetMenu .axCoreBtn > div > div:first-child{color:#fff!important}
+#sideWidgetMenu .axCoreBtn .axTile{border-color:rgba(255,255,255,.7)!important}
+#sideWidgetMenu .axCoreArrow svg.axi .a{stroke:#fff}
+html.mc #sidePanel:has(#sideWidgetMenu:not(.hidden)){background:#000!important}
+#mapFloatingInfo{border-color:rgba(255,255,255,.16)!important}
+#mapFloatingInfo #gearBadge{filter:grayscale(1)}
+#mapFloatingInfo #btEtcGroup .border-purple-500{border-color:rgba(255,255,255,.5)!important;color:#fff!important}
+#btStatusIcon.text-cyan-400{color:#fff!important}
+
+/* ---- 中のパネル(車両ステータス・設定・音楽など)も白黒の細線デザインに ---- */
+:is(#sideWidgetHighway,#sideWidgetQuick,#sideWidgetQuickRoad,#sideWidgetQuickZoom,#sideWidgetQuickNearby,#sideWidgetTurn,#sideWidgetMaintenance,#sideWidgetSearch,#sideWidgetMusic,#settingsModal){filter:grayscale(1)}
+:is(#sideWidgetAC,#sideWidgetHighway,#sideWidgetQuick,#sideWidgetQuickRoad,#sideWidgetQuickZoom,#sideWidgetQuickNearby,#sideWidgetTurn,#sideWidgetMaintenance,#sideWidgetSearch,#sideWidgetDashboard,#sideWidgetMusic,#settingsModal){letter-spacing:.03em}
+#sideWidgetSonar{letter-spacing:.03em}
+#settingsModal{background:#050506!important}
+:is(#sideWidgetAC,#sideWidgetHighway,#sideWidgetQuick,#sideWidgetQuickRoad,#sideWidgetQuickZoom,#sideWidgetQuickNearby,#sideWidgetTurn,#sideWidgetMaintenance,#sideWidgetSearch,#sideWidgetDashboard,#sideWidgetMusic,#settingsModal) :is([class*="bg-slate-900"],[class*="bg-slate-950"]):not(button,select,input,textarea,i,span){background:linear-gradient(180deg,#16171b,#0d0e11)!important;border-color:rgba(255,255,255,.1)!important}
+:is(#sideWidgetAC,#sideWidgetHighway,#sideWidgetQuick,#sideWidgetQuickRoad,#sideWidgetQuickZoom,#sideWidgetQuickNearby,#sideWidgetTurn,#sideWidgetMaintenance,#sideWidgetSearch,#sideWidgetDashboard,#sideWidgetMusic,#settingsModal) :is(button,select,input,textarea)[class*="bg-slate"]{background:rgba(255,255,255,.04)!important;border-width:1px;border-style:solid;border-color:rgba(255,255,255,.2)!important;border-radius:10px;color:#e9e9ec;letter-spacing:.05em}
+:is(#sideWidgetAC,#sideWidgetHighway,#sideWidgetQuick,#sideWidgetQuickRoad,#sideWidgetQuickZoom,#sideWidgetQuickNearby,#sideWidgetTurn,#sideWidgetMaintenance,#sideWidgetSearch,#sideWidgetDashboard,#sideWidgetMusic,#settingsModal) [class*="border-"]{border-color:rgba(255,255,255,.14)!important}
+:is(#sideWidgetAC,#sideWidgetHighway,#sideWidgetQuick,#sideWidgetQuickRoad,#sideWidgetQuickZoom,#sideWidgetQuickNearby,#sideWidgetTurn,#sideWidgetMaintenance,#sideWidgetSearch,#sideWidgetDashboard,#sideWidgetMusic,#settingsModal) :is([class*="bg-cyan-"],[class*="bg-blue-"],[class*="bg-emerald-"],[class*="bg-green-"],[class*="bg-indigo-"],[class*="bg-purple-"],[class*="bg-orange-"],[class*="bg-amber-"],[class*="bg-sky-"],[class*="bg-teal-"],[class*="bg-pink-"],[class*="bg-red-"],[class*="bg-yellow-"],[class*="bg-violet-"]):not([class*="/"]):is(button,span,div,label){background:#f2f2f3!important;color:#09090a!important;border-color:#fff!important}
+:is(#sideWidgetAC,#sideWidgetHighway,#sideWidgetQuick,#sideWidgetQuickRoad,#sideWidgetQuickZoom,#sideWidgetQuickNearby,#sideWidgetTurn,#sideWidgetMaintenance,#sideWidgetSearch,#sideWidgetDashboard,#sideWidgetMusic,#settingsModal) :is([class*="bg-cyan-"],[class*="bg-blue-"],[class*="bg-emerald-"],[class*="bg-green-"],[class*="bg-indigo-"],[class*="bg-purple-"],[class*="bg-orange-"],[class*="bg-amber-"],[class*="bg-sky-"],[class*="bg-teal-"],[class*="bg-pink-"],[class*="bg-red-"],[class*="bg-yellow-"],[class*="bg-violet-"]):not([class*="/"]):is(button,span,div,label) *{color:#09090a!important}
+:is(#sideWidgetAC,#sideWidgetHighway,#sideWidgetQuick,#sideWidgetQuickRoad,#sideWidgetQuickZoom,#sideWidgetQuickNearby,#sideWidgetTurn,#sideWidgetMaintenance,#sideWidgetSearch,#sideWidgetDashboard,#sideWidgetMusic,#settingsModal) :is(.text-slate-400,.text-slate-500){color:#8e8e96!important}
+:is(#sideWidgetAC,#sideWidgetHighway,#sideWidgetQuick,#sideWidgetQuickRoad,#sideWidgetQuickZoom,#sideWidgetQuickNearby,#sideWidgetTurn,#sideWidgetMaintenance,#sideWidgetSearch,#sideWidgetDashboard,#sideWidgetMusic,#settingsModal) .font-black{font-weight:600}
+:is(#sideWidgetAC,#sideWidgetHighway,#sideWidgetQuick,#sideWidgetQuickRoad,#sideWidgetQuickZoom,#sideWidgetQuickNearby,#sideWidgetTurn,#sideWidgetMaintenance,#sideWidgetSearch,#sideWidgetDashboard,#sideWidgetMusic,#settingsModal) > div:first-child > div:first-child{letter-spacing:.14em;font-weight:400!important}
+:is(#sideWidgetAC,#sideWidgetHighway,#sideWidgetQuick,#sideWidgetQuickRoad,#sideWidgetQuickZoom,#sideWidgetQuickNearby,#sideWidgetTurn,#sideWidgetMaintenance,#sideWidgetSearch,#sideWidgetDashboard,#sideWidgetMusic,#settingsModal) > div:first-child{background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.28) 30%,rgba(255,255,255,.28) 70%,rgba(255,255,255,0)) bottom/100% 1px no-repeat;border-bottom-color:transparent!important}
+:is(#sideWidgetAC,#sideWidgetHighway,#sideWidgetQuick,#sideWidgetQuickRoad,#sideWidgetQuickZoom,#sideWidgetQuickNearby,#sideWidgetTurn,#sideWidgetMaintenance,#sideWidgetSearch,#sideWidgetDashboard,#sideWidgetMusic,#settingsModal) > div:first-child > button{letter-spacing:.08em}
+:is(#sideWidgetAC,#sideWidgetHighway,#sideWidgetQuick,#sideWidgetQuickRoad,#sideWidgetQuickZoom,#sideWidgetQuickNearby,#sideWidgetTurn,#sideWidgetMaintenance,#sideWidgetSearch,#sideWidgetDashboard,#sideWidgetMusic,#settingsModal) :is(select,input,textarea){outline:none}
+:is(#sideWidgetAC,#sideWidgetHighway,#sideWidgetQuick,#sideWidgetQuickRoad,#sideWidgetQuickZoom,#sideWidgetQuickNearby,#sideWidgetTurn,#sideWidgetMaintenance,#sideWidgetSearch,#sideWidgetDashboard,#sideWidgetMusic,#settingsModal) button:active{filter:brightness(1.3)}
+@keyframes axFade{from{opacity:0;transform:scale(.985)}to{opacity:1;transform:none}}
+.axPanelIn > *{animation:axCardIn .4s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i,0)*40ms)}
+#settingsModal.axPanelIn{animation:axFade .28s ease-out both}
+#settingsModal.axPanelIn > *{animation:none}
+#settingsModal.axPanelIn #settingsScroll > *{animation:axCardIn .4s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i,0)*35ms + 80ms)}
+@media (prefers-reduced-motion:reduce){.axPanelIn > *,#settingsModal.axPanelIn,#settingsModal.axPanelIn #settingsScroll > *{animation:none!important}}
+
+/* ===== 色を戻す所(ルートの色分け・他の車)と、全画面レイアウト ===== */
+#sideWidgetDashboard > *:not([onclick^="handleTirePanelTaps"]),#sideWidgetAC > div:first-child,#sideWidgetAC > #axAcLeft,
+#sideWidgetRoutes > *:not(#routeModeList),#sideWidgetVisual > *:not(#visSvg){filter:grayscale(1)}
+#sideWidgetRoutes button,#sideWidgetVisual button{letter-spacing:.05em}
+#sideWidgetRoutes > div:first-child,#sideWidgetVisual > div:first-child{background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.28) 30%,rgba(255,255,255,.28) 70%,rgba(255,255,255,0)) bottom/100% 1px no-repeat;border-bottom-color:transparent!important}
+#sideWidgetRoutes #routeModeList > button{border-radius:14px;letter-spacing:.06em}
+#sideWidgetVisual button{background:rgba(255,255,255,.04)!important;border:1px solid rgba(255,255,255,.2)!important;border-radius:10px;color:#e9e9ec!important}
+#sideWidgetVisual #visSvg{background:#08090b!important;border-color:rgba(255,255,255,.12)!important;border-radius:14px}
+/* 視覚情報: 自分の車は灰色、ほかの車は色分け */
+#visSvg rect[fill="#9ca3af"]{fill:#9ca3af;stroke:#e5e7eb}
+#visSvg rect[fill="var(--tx2,#cbd5e1)"]{fill:#fb923c}
+#visSvg rect[fill="#fca5a5"]{fill:#ef4444}
+#visSvg rect[fill="#fde68a"]{fill:#facc15}
+#visSvg rect[fill="#86efac"]{fill:#22c55e}
+#visSvg rect[fill="#93c5fd"]{fill:#3b82f6}
+#visSvg rect[fill="#c4b5fd"]{fill:#a855f7}
+/* 車両ステータスのタイヤ: 異常は赤い×、正常は白 */
+#dashTireAlertText{color:#f87171!important;letter-spacing:.06em}
+#rearLeftTire .axTireX{width:16px;height:16px;display:block}
+/* ---- 全画面にしたときだけレイアウトを変える ---- */
+#sidePanel.panel-fs #sideWidgetDashboard:not(.hidden){display:block!important;column-count:2;column-gap:16px;overflow-y:auto}
+#sidePanel.panel-fs #sideWidgetDashboard > *{break-inside:avoid;margin-top:0!important;margin-bottom:10px!important}
+#sidePanel.panel-fs #sideWidgetDashboard > div:first-child{column-span:all}
+#sidePanel.panel-fs #sideWidgetVisual:not(.hidden) #visSvg{max-height:none!important;height:72vh;width:auto;margin:0 auto}
+#sidePanel.panel-fs #sideWidgetVisual:not(.hidden) #visNote{font-size:13px}
+#sidePanel.panel-fs #sideWidgetRoutes #routeModeList{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+/* ---- エアコン(全画面): 左に操作、右にシートと風向き ---- */
+#axAcRight{display:none}
+#axAcLeft{flex-shrink:0}
+#sidePanel.panel-fs #sideWidgetAC:not(.hidden){display:grid!important;grid-template-columns:minmax(320px,36%) 1fr;grid-template-rows:auto minmax(0,1fr);gap:10px 18px;overflow:hidden}
+#sidePanel.panel-fs #sideWidgetAC > div:first-child{grid-column:1/-1;margin:0!important}
+#sidePanel.panel-fs #sideWidgetAC > #axAcLeft{grid-column:1;grid-row:2;overflow-y:auto;margin:0!important}
+#sidePanel.panel-fs #sideWidgetAC > #axAcRight{display:grid;grid-column:2;grid-row:2;grid-template-columns:1fr 1.1fr;gap:14px;min-height:0;margin:0!important}
+#axAcRight{color:#e9e9ec;letter-spacing:.04em;font-size:12px}
+.axSec{background:linear-gradient(180deg,#16171b,#0d0e11);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:12px;display:flex;flex-direction:column;min-height:0}
+.axSec h4{margin:0 0 8px;font-weight:400;letter-spacing:.22em;font-size:12px;color:#c9c9cf;padding-bottom:6px;background:linear-gradient(90deg,rgba(255,255,255,.3),rgba(255,255,255,0)) bottom/100% 1px no-repeat}
+.axSeats{display:grid;grid-template-columns:1fr 1fr;gap:10px;flex:1;min-height:0}
+.axSeat{display:flex;flex-direction:column;align-items:center;gap:6px;min-height:0}
+.axSeat .nm{font-size:11px;color:#9a9aa3;letter-spacing:.14em}
+.axSeat svg{width:100%;max-width:130px;flex:1;min-height:0;cursor:pointer;overflow:visible}
+.axChip{width:100%;display:flex;align-items:center;justify-content:space-between;gap:6px;padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.04);color:#e9e9ec;font:inherit;font-size:12px;letter-spacing:.06em;cursor:pointer}
+.axChip:active{filter:brightness(1.3)}
+.axChip .lv{letter-spacing:.2em;font-size:10px;opacity:.9}
+.axChip.h.on{border-color:#fb923c;background:rgba(251,146,60,.16);color:#ffd8b8}
+.axChip.c.on{border-color:#38bdf8;background:rgba(56,189,248,.16);color:#c6ecff}
+.axVent{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.axVent .axChip{width:auto;flex:1 1 auto;justify-content:center}
+.axVent .axChip.on{border-color:#fff;background:#f2f2f3;color:#09090a}
+#axFlowSvg{width:100%;flex:1;min-height:0}
+#axFlowLbl{margin-top:6px;font-size:12px;color:#c9c9cf;text-align:center;letter-spacing:.08em}
+.axFl{opacity:.12;transition:opacity .3s}
+.axFl.on{opacity:1}
+.axFl path.ln{fill:none;stroke:var(--fc,#e5e7eb);stroke-width:3;stroke-linecap:round;stroke-dasharray:6 7;animation:axDash var(--fd,1s) linear infinite}
+.axFl path.hd{fill:var(--fc,#e5e7eb)}
+@keyframes axDash{to{stroke-dashoffset:-26}}
+.axWave{animation:axRise 1.6s linear infinite}
+@keyframes axRise{0%{transform:translateY(8px);opacity:0}30%{opacity:1}100%{transform:translateY(-12px);opacity:0}}
+.axSnow{animation:axFall 1.8s linear infinite}
+@keyframes axFall{0%{transform:translateY(-10px);opacity:0}30%{opacity:1}100%{transform:translateY(12px);opacity:0}}
+@media (prefers-reduced-motion:reduce){.axWave,.axSnow,.axFl path.ln{animation:none}}
+</style>
+<script id="axPremiumScript">
+(function(){
+ var I={
+  logo:'<svg class="axi" viewBox="0 0 64 40" style="width:20px;height:13px;filter:drop-shadow(0 0 5px rgba(124,196,255,.7))"><defs><linearGradient id="axLg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#7cc4ff"/></linearGradient></defs><path d="M2 38L26 2h12l24 36H49L32 13 21 38z" fill="url(#axLg)" stroke="none"/></svg>',
+  settings:'<path class="a" d="M4 7h9M17 7h3M4 12h3M11 12h9M4 17h11M19 17h1"/><circle class="f" cx="15" cy="7" r="2"/><circle class="f" cx="9" cy="12" r="2"/><circle class="f" cx="17" cy="17" r="2"/>',
+  car:'<path class="f" d="M3 16.5V13.2C3 12.5 3.4 12 4 11.8L7.4 10.8 9.4 7.6C9.7 7.1 10.2 6.9 10.8 6.9H14.2C14.8 6.9 15.3 7.1 15.7 7.6L18 10.6 20.2 11.2C20.8 11.4 21.2 11.9 21.2 12.5V16.5H19.4A2.2 2.2 0 0 0 15 16.5H9.2A2.2 2.2 0 0 0 4.8 16.5H3z"/><path class="w" d="M9.9 10.6L11 8.4H14L15.6 10.6z"/><circle class="w" cx="7" cy="16.5" r="1.3"/><circle class="w" cx="17.2" cy="16.5" r="1.3"/>',
+  eye:'<path class="f" d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle class="w" cx="12" cy="12" r="3"/><circle class="s" cx="12" cy="12" r="1.1"/>',
+  route:'<circle class="f" cx="5" cy="19" r="2.1"/><path class="w" d="M7.1 19H14a2.8 2.8 0 0 0 0-5.6H9.5a2.8 2.8 0 0 1 0-5.6h2.7"/><path class="f" d="M18 2.2a3.6 3.6 0 0 0-3.6 3.6c0 2.7 3.6 6.2 3.6 6.2s3.6-3.5 3.6-6.2A3.6 3.6 0 0 0 18 2.2z"/><circle class="s" cx="18" cy="5.8" r="1.2"/>',
+  music:'<path class="w" d="M9 18V5l11-2v13"/><circle class="f" cx="6" cy="18" r="3"/><circle class="f" cx="17" cy="16" r="3"/>',
+  cam:'<rect class="f" x="2.5" y="6.5" width="13" height="11" rx="2.5"/><path class="w" d="M15.5 10.5l5-3v9l-5-3z"/>',
+  sonar:'<circle class="d" cx="12" cy="12" r="9.2"/><circle class="a" cx="12" cy="12" r="5.4"/><circle class="s" cx="12" cy="12" r="1.6"/><path class="w" d="M12 12L19 5.2"/>',
+  ac:'<circle class="d" cx="12" cy="12" r="9.6"/><path class="f" d="M12 10.2C10.4 6 11.4 3 14 3.3C16.2 3.6 15.6 7.2 12.8 10.4z"/><path class="f" transform="rotate(120 12 12)" d="M12 10.2C10.4 6 11.4 3 14 3.3C16.2 3.6 15.6 7.2 12.8 10.4z"/><path class="f" transform="rotate(240 12 12)" d="M12 10.2C10.4 6 11.4 3 14 3.3C16.2 3.6 15.6 7.2 12.8 10.4z"/><circle class="s" cx="12" cy="12" r="1.6"/>',
+  menuGrid:'<rect class="f" x="3.5" y="3.5" width="7" height="7" rx="2"/><rect class="f" x="13.5" y="3.5" width="7" height="7" rx="2"/><rect class="f" x="3.5" y="13.5" width="7" height="7" rx="2"/><rect class="w" x="13.5" y="13.5" width="7" height="7" rx="2"/>',
+  out:'<path class="a" d="M7 17L17 7M9 7h8v8"/>',
+  center:'<path d="M12 2.5L4.5 20 12 16.2z" fill="#fff" fill-opacity=".95" stroke="none"/><path d="M12 2.5L19.5 20 12 16.2z" fill="var(--ac)" stroke="none"/>',
+  search:'<circle class="f" cx="10.5" cy="10.5" r="6.5"/><path class="w" d="M15.5 15.5L21 21"/>',
+  chat:'<path class="f" d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H11l-4.5 4v-4A2.5 2.5 0 0 1 4 13.5z"/><path class="w" d="M8.5 9.5v2M12 7.5v6M15.5 9.5v2"/>',
+  bolt:'<path class="f" d="M13 2L4.5 13.5H11L10 22l8.5-11.5H12z"/>',
+  menu:'<path class="w" d="M4 7h16M4 12h10M4 17h16"/><circle class="s" cx="19" cy="12" r="1.4"/>',
+  phone:'<rect class="cf" x="7" y="2.5" width="10" height="19" rx="2.6"/><path class="c" d="M10.5 18.5h3"/>',
+  sun:'<circle class="f" cx="12" cy="12" r="4.2"/><path class="a" d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/>',
+  cloudsun:'<circle class="f" cx="16.5" cy="7.5" r="3"/><path class="a" d="M16.5 2v1.2M21.8 7.5h-1.2M20.2 3.8l-.9.9M12.8 3.8l.9.9"/><g transform="translate(1.2 6) scale(.75)" stroke-width="2.25"><path class="f" d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></g>',
+  cloud:'<path class="f" d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/>',
+  rain:'<path class="f" d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"/><path class="w" d="M16 13v8M8 13v8M12 15v8"/>',
+  snow:'<path class="f" d="M20 17.58A5 5 0 0 0 18 8h-1.26A8 8 0 1 0 4 16.25"/><path class="w" d="M8 16h.01M8 20h.01M12 18h.01M12 22h.01M16 16h.01M16 20h.01"/>',
+  bolt2:'<path class="f" d="M19 16.9A5 5 0 0 0 18 7h-1.26a8 8 0 1 0-11.62 9"/><path class="w" d="M13 11l-4 6h6l-4 6"/>',
+  fog:'<path class="f" d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/><path class="w" d="M7 23h10"/>'
+ };
+ function svg(n,extra){return '<svg class="axi" viewBox="0 0 24 24" aria-hidden="true"'+(extra||'')+'>'+I[n]+'</svg>';}
+ function wxName(cls){cls=cls||'';return /cloud-sun/.test(cls)?'cloudsun':/fa-sun/.test(cls)?'sun':/cloud-bolt/.test(cls)?'bolt2':/snowflake/.test(cls)?'snow':/smog/.test(cls)?'fog':/showers|rain/.test(cls)?'rain':'cloud';}
+ function tile(key,name){var s=document.createElement('span');s.className='axTile';s.innerHTML=svg(name);return s;}
+ function keyOf(o){o=o||'';return /AXION.*HOME/.test(o)?'core':/openSettingsModal/.test(o)?'settings':/'dashboard'/.test(o)?'car':/WEATHER/.test(o)?'weather':/'visual'/.test(o)?'eye':/'search'/.test(o)?'route':/'music'/.test(o)?'music':/toggleCameraMode/.test(o)?'cam':/'sonar'/.test(o)?'sonar':/'ac'/.test(o)?'ac':'';}
+ function menu(){
+  var m=document.getElementById('sideWidgetMenu'); if(!m||m.getAttribute('data-axp'))return; m.setAttribute('data-axp','1');
+  var hd=m.querySelector(':scope > div:first-child i.fa-bars');
+  if(hd){hd.classList.add('axOld');hd.insertAdjacentHTML('afterend',svg('menuGrid',' style="--rgb:124,196,255;--ac:rgb(124,196,255)"'));}
+  Array.prototype.forEach.call(m.querySelectorAll('.space-y-1 > button'),function(b){
+   var k=keyOf(b.getAttribute('onclick')); if(!k)return; b.setAttribute('data-ax',k);
+   if(k==='core'){
+    b.classList.add('axCoreBtn');
+    var t=b.querySelector(':scope > span'); if(t){t.className='axTile';t.removeAttribute('style');t.innerHTML=I.logo;}
+    var o=b.querySelector(':scope > i'); if(o){o.classList.add('axOld');var a=document.createElement('span');a.className='axCoreArrow';a.innerHTML=svg('out');o.insertAdjacentElement('afterend',a);}
+    return;
+   }
+   var ic=b.querySelector(':scope > i'); if(!ic)return;
+   var nm=k==='weather'?wxName(ic.className):k;
+   var tl=tile(k,nm); ic.classList.add('axOld'); ic.insertAdjacentElement('beforebegin',tl);
+   if(k==='weather'){
+    new MutationObserver(function(){var n=wxName(ic.className);tl.innerHTML=svg(n);}).observe(ic,{attributes:true,attributeFilter:['class']});
+   }
+  });
+ }
+ function bar(){
+  var br=document.getElementById('mapFloatingInfo'); if(!br||br.getAttribute('data-axp'))return; br.setAttribute('data-axp','1');
+  function swap(btn,key,name){
+   if(!btn)return; btn.setAttribute('data-ax',key);
+   var o=btn.querySelector(':scope > i, :scope > svg:not(.axi)'); if(!o)return;
+   o.classList.add('axOld'); o.insertAdjacentHTML('afterend',svg(name));
+  }
+  swap(document.getElementById('recenterBtnContainer'),'b-center','center');
+  var bs=br.querySelectorAll('button.w-7');
+  Array.prototype.forEach.call(bs,function(b){
+   var o=b.getAttribute('onclick')||'';
+   if(/handleSearchButtonClicks/.test(o))swap(b,'b-search','search');
+   else if(/'music'/.test(o))swap(b,'music','music');
+   else if(/startVoiceRecognition/.test(o))swap(b,'b-chat','chat');
+   else if(/'quick'/.test(o))swap(b,'b-bolt','bolt');
+   else if(/handleMenuButtonClicks/.test(o))swap(b,'b-menu','menu');
+  });
+  var ph=document.querySelector('#btStatusIcon > i'); if(ph){ph.classList.add('axOld');ph.insertAdjacentHTML('afterend',svg('phone'));}
+ }
+ function go(){try{menu();bar();}catch(e){console.warn('axPremium',e);}}
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',go);else go();
+})();
+</script>
+
+<script id="axOpenAnim">
+(function(){
+ function init(){
+  var m=document.getElementById('sideWidgetMenu'); if(!m)return;
+  function play(){
+   var bs=m.querySelectorAll('.space-y-1 > button');
+   Array.prototype.forEach.call(bs,function(b,i){b.style.setProperty('--i',i);});
+   m.classList.remove('axIn'); void m.offsetWidth; m.classList.add('axIn');
+  }
+  var was=m.classList.contains('hidden');
+  new MutationObserver(function(){
+   var h=m.classList.contains('hidden');
+   if(was&&!h)play(); was=h;
+  }).observe(m,{attributes:true,attributeFilter:['class']});
+  if(!was)play();
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
+</script>
+
+<script id="axPanelAnim">
+(function(){
+ var ids=['sideWidgetAC','sideWidgetRoutes','sideWidgetHighway','sideWidgetQuick','sideWidgetQuickRoad','sideWidgetQuickZoom','sideWidgetQuickNearby','sideWidgetTurn','sideWidgetMaintenance','sideWidgetSearch','sideWidgetDashboard','sideWidgetVisual','sideWidgetMusic','sideWidgetSonar','settingsModal'];
+ function init(){
+  ids.forEach(function(id){
+   var el=document.getElementById(id); if(!el)return;
+   var was=el.classList.contains('hidden');
+   new MutationObserver(function(){
+    var h=el.classList.contains('hidden');
+    if(was&&!h){
+     var kids=(id==='settingsModal'?(document.getElementById('settingsScroll')||el):el).children;
+     for(var i=0;i<kids.length;i++)kids[i].style.setProperty('--i',Math.min(i,12));
+     el.classList.remove('axPanelIn'); void el.offsetWidth; el.classList.add('axPanelIn');
+     setTimeout(function(){el.classList.remove('axPanelIn');},1300);
+    }
+    was=h;
+   }).observe(el,{attributes:true,attributeFilter:['class']});
+  });
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
+</script>
+
+<script id="axExtra">
+(function(){
+ /* ---------- 車両ステータス: 左後ろのタイヤは赤い× ---------- */
+ function tireX(){
+  var t=document.getElementById('rearLeftTire'); if(!t||t.getAttribute('data-axx'))return; t.setAttribute('data-axx','1');
+  var c=t.firstElementChild; if(!c)return;
+  c.className='flex items-center justify-center';
+  c.removeAttribute('style');
+  c.innerHTML='<svg class="axTireX" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3L13 13M13 3L3 13" fill="none" stroke="#ef4444" stroke-width="2.6" stroke-linecap="round"/></svg>';
+  var bar=t.children[1]; if(bar)bar.style.background='#ef4444';
+ }
+ /* ---------- エアコン(全画面)のシート・風向き ---------- */
+ var X={seat:{d:{h:0,c:0},p:{h:0,c:0}},vent:'auto'};
+ try{var sv=JSON.parse(localStorage.getItem('axAcExtra')||'null');
+  if(sv&&sv.seat){['d','p'].forEach(function(k){if(sv.seat[k]){X.seat[k].h=sv.seat[k].h|0;X.seat[k].c=sv.seat[k].c|0;}});}
+  if(sv&&['auto','face','bi','feet','win'].indexOf(sv.vent)>=0)X.vent=sv.vent;}catch(e){}
+ function save(){try{localStorage.setItem('axAcExtra',JSON.stringify(X));}catch(e){}}
+ function dots(n){return '●'.repeat(n)+'○'.repeat(3-n);}
+ function seatSvg(id){
+  return '<svg viewBox="0 0 120 160" data-pic="'+id+'" aria-label="シート">'
+   +'<rect class="sb" x="20" y="16" width="80" height="84" rx="24"/>'
+   +'<rect class="sh" x="42" y="2" width="36" height="18" rx="9"/>'
+   +'<rect class="sc" x="12" y="92" width="96" height="60" rx="20"/>'
+   +'<g class="waves" style="opacity:0"><g class="axWave"><path d="M36 140q7-9 0-18q-7-9 0-18" fill="none" stroke="#fdba74" stroke-width="3" stroke-linecap="round"/></g><g class="axWave" style="animation-delay:.5s"><path d="M60 140q7-9 0-18q-7-9 0-18" fill="none" stroke="#fdba74" stroke-width="3" stroke-linecap="round"/></g><g class="axWave" style="animation-delay:1s"><path d="M84 140q7-9 0-18q-7-9 0-18" fill="none" stroke="#fdba74" stroke-width="3" stroke-linecap="round"/></g></g>'
+   +'<g class="snow" style="opacity:0"><g class="axSnow"><path d="M36 112h10M41 107v10M37.5 108.5l7 7M37.5 115.5l7-7" stroke="#7dd3fc" stroke-width="2" stroke-linecap="round" fill="none"/></g><g class="axSnow" style="animation-delay:.6s"><path d="M70 106h10M75 101v10M71.5 102.5l7 7M71.5 109.5l7-7" stroke="#7dd3fc" stroke-width="2" stroke-linecap="round" fill="none"/></g><g class="axSnow" style="animation-delay:1.2s"><path d="M52 132h10M57 127v10M53.5 128.5l7 7M53.5 135.5l7-7" stroke="#7dd3fc" stroke-width="2" stroke-linecap="round" fill="none"/></g></g>'
+   +'</svg>';
+ }
+ function seatCard(id,name){
+  return '<div class="axSeat" data-seat="'+id+'"><div class="nm">'+name+'</div>'+seatSvg(id)
+   +'<button class="axChip h" data-act="seat" data-s="'+id+'" data-k="h"><span>ヒーター</span><span class="lv"></span></button>'
+   +'<button class="axChip c" data-act="seat" data-s="'+id+'" data-k="c"><span>冷却</span><span class="lv"></span></button></div>';
+ }
+ function flowSvg(){
+  return '<svg id="axFlowSvg" viewBox="0 0 280 180" aria-label="風向き">'
+   +'<path d="M10 160H270" stroke="rgba(255,255,255,.22)" stroke-width="2" fill="none"/>'
+   +'<path d="M232 78L186 14H60" stroke="rgba(255,255,255,.5)" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
+   +'<rect x="212" y="80" width="58" height="42" rx="10" fill="#15161a" stroke="rgba(255,255,255,.35)" stroke-width="1.5"/>'
+   +'<rect x="52" y="64" width="16" height="72" rx="8" transform="rotate(-8 60 100)" fill="#1a1b1f" stroke="rgba(255,255,255,.3)"/>'
+   +'<rect x="52" y="126" width="86" height="16" rx="8" fill="#1a1b1f" stroke="rgba(255,255,255,.3)"/>'
+   +'<circle cx="92" cy="56" r="13" fill="rgba(255,255,255,.1)" stroke="rgba(255,255,255,.4)"/>'
+   +'<path d="M88 74L82 122L142 124L156 158" fill="none" stroke="rgba(255,255,255,.28)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>'
+   +'<g class="axFl" data-f="face"><path class="ln" d="M210 92C186 88 146 76 114 62"/><path class="hd" d="M114 62L125.2 60.8L121.7 70.2z"/></g>'
+   +'<g class="axFl" data-f="feet"><path class="ln" d="M212 118C196 126 178 138 162 150"/><path class="hd" d="M162 150L173 148L167 140z"/></g>'
+   +'<g class="axFl" data-f="win"><path class="ln" d="M220 80C214 64 206 46 196 30"/><path class="hd" d="M196 30L205.3 36.3L196.6 41.2z"/></g>'
+   +'</svg>';
+ }
+ var VENTS=[['auto','オート'],['face','顔'],['bi','顔+足元'],['feet','足元'],['win','ガラス']];
+ var VLBL={face:'顔に当たっています',bi:'顔と足元に当たっています',feet:'足元に当たっています',win:'フロントガラスに当たっています',none:'エアコン停止中'};
+ function build(){
+  var ac=document.getElementById('sideWidgetAC'); if(!ac||document.getElementById('axAcRight'))return;
+  var hdr=ac.firstElementChild; if(!hdr)return;
+  var left=document.createElement('div'); left.id='axAcLeft'; left.className='flex flex-col space-y-1.5';
+  while(hdr.nextSibling){left.appendChild(hdr.nextSibling);}
+  var right=document.createElement('div'); right.id='axAcRight';
+  right.innerHTML='<section class="axSec"><h4>シート</h4><div class="axSeats">'+seatCard('p','助手席')+seatCard('d','運転席')+'</div></section>'
+   +'<section class="axSec"><h4>風向き</h4>'+flowSvg()+'<div id="axFlowLbl"></div><div class="axVent">'+VENTS.map(function(v){return '<button class="axChip" data-act="vent" data-v="'+v[0]+'">'+v[1]+'</button>';}).join('')+'</div></section>';
+  ac.appendChild(left); ac.appendChild(right);
+  right.addEventListener('click',function(e){
+   var b=e.target.closest('[data-act],[data-pic]'); if(!b)return;
+   if(b.getAttribute('data-pic')){cycle(b.getAttribute('data-pic'),'h');}
+   else if(b.getAttribute('data-act')==='seat'){cycle(b.getAttribute('data-s'),b.getAttribute('data-k'));}
+   else if(b.getAttribute('data-act')==='vent'){X.vent=b.getAttribute('data-v');save();render();}
+  });
+  render();
+ }
+ function cycle(id,k){
+  var o=X.seat[id], other=k==='h'?'c':'h';
+  o[k]=(o[k]+1)%4; if(o[k]>0)o[other]=0;   /* ヒーターと冷却は同時に入らない */
+  save(); render();
+ }
+ function dirNow(){
+  if(typeof AC==='undefined'||!AC.on)return 'none';
+  if(X.vent!=='auto')return X.vent;
+  if(AC.defrost)return 'win';
+  if(AC.mode==='heat')return 'feet';
+  if(AC.mode==='cool'||AC.mode==='vent')return 'face';
+  return AC.cabin>AC.temp+0.3?'face':'bi';
+ }
+ function render(){
+  var r=document.getElementById('axAcRight'); if(!r)return;
+  ['d','p'].forEach(function(id){
+   var card=r.querySelector('.axSeat[data-seat="'+id+'"]'); if(!card)return;
+   var h=X.seat[id].h, c=X.seat[id].c, svg=card.querySelector('svg');
+   var fill=h>0?'rgba(251,113,60,'+(0.16+0.2*h)+')':c>0?'rgba(56,189,248,'+(0.14+0.2*c)+')':'#17181c';
+   var stroke=h>0?'#fb923c':c>0?'#38bdf8':'rgba(255,255,255,.35)';
+   svg.querySelectorAll('.sb,.sh,.sc').forEach(function(el){el.setAttribute('fill',fill);el.setAttribute('stroke',stroke);el.setAttribute('stroke-width','2');});
+   svg.querySelector('.waves').style.opacity=h>0?String(0.45+0.2*h):'0';
+   svg.querySelector('.snow').style.opacity=c>0?String(0.45+0.2*c):'0';
+   var bh=card.querySelector('.axChip.h'), bc=card.querySelector('.axChip.c');
+   bh.classList.toggle('on',h>0); bc.classList.toggle('on',c>0);
+   bh.querySelector('.lv').textContent=dots(h); bc.querySelector('.lv').textContent=dots(c);
+  });
+  var d=dirNow(), f=(typeof acEffectiveFan==='function')?acEffectiveFan():3;
+  var fl=document.getElementById('axFlowSvg');
+  if(fl){
+   var warm=typeof AC!=='undefined'&&AC.on&&(AC.mode==='heat'||AC.defrost||(AC.mode==='auto'&&AC.cabin<AC.temp-0.3));
+   var cool=typeof AC!=='undefined'&&AC.on&&(AC.mode==='cool'||(AC.mode==='auto'&&AC.cabin>AC.temp+0.3));
+   fl.style.setProperty('--fc',warm?'#fb923c':cool?'#38bdf8':'#e5e7eb');
+   fl.style.setProperty('--fd',Math.max(0.45,1.7-0.18*f).toFixed(2)+'s');
+   fl.querySelectorAll('.axFl').forEach(function(g){
+    var k=g.getAttribute('data-f');
+    g.classList.toggle('on',(k==='face'&&(d==='face'||d==='bi'))||(k==='feet'&&(d==='feet'||d==='bi'))||(k==='win'&&d==='win'));
+   });
+  }
+  var lb=document.getElementById('axFlowLbl'); if(lb)lb.textContent=VLBL[d]+(d!=='none'&&X.vent==='auto'?'(オート)':'')+(d!=='none'?' ・ 風量 '+f:'');
+  r.querySelectorAll('[data-act="vent"]').forEach(function(b){b.classList.toggle('on',b.getAttribute('data-v')===X.vent);});
+ }
+ function init(){
+  tireX(); build();
+  var o=window.acRender;
+  if(typeof o==='function'&&!o.__ax){var w=function(){o.apply(this,arguments);try{render();}catch(e){}};w.__ax=1;window.acRender=w;}
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
+</script>
+<!-- ===== /AXION Premium UI ===== -->
+
 </body>
 </html>
