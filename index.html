@@ -1809,6 +1809,16 @@ ETC
                   <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[\'\'] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
                 </label>
               </div>
+              <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 mb-2.5">
+                <div class="font-bold text-white">曲がる前の音声案内</div>
+                <div class="text-xs text-slate-400 mt-0.5 mb-2">一般道は700m・300m手前に案内し、40m手前に「右方向です」のように方向だけ言います</div>
+                <div class="text-sm text-white">高速道路は1キロ先から案内</div>
+                <div class="text-[10px] text-slate-500 mb-2">「およそ1キロ先、分岐を斜め左方向です」(高速道路だけ)</div>
+                <div class="grid grid-cols-2 gap-1.5" id="hwFarGuideButtons">
+                  <button type="button" data-on="1" onclick="setHwFarGuide(true)" class="mset-btn">オン</button>
+                  <button type="button" data-on="0" onclick="setHwFarGuide(false)" class="mset-btn">オフ</button>
+                </div>
+              </div>
               <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
 <div class="font-bold text-white">デザイン(見た目)</div>
 <div class="text-xs text-slate-400 mt-0.5 mb-2.5">画面全体の見た目を選びます。「標準」は今までの見た目です</div>
@@ -5353,7 +5363,8 @@ ETC
     window.addEventListener('orientationchange', () => setTimeout(reassertScreenAfterOrientationChange, 300));
 
     // VOICE ASSISTANT WITH 2-STEP DESTINATION DIALOGUE
-    function startVoiceRecognition() {
+    function startVoiceRecognition(opts) {
+      const fromHome = !!(opts && opts.fromHome === true);   // ホーム画面のマイクから呼ばれたとき
       initAudio();
       playBeepSound('warning');
 
@@ -5396,12 +5407,21 @@ ETC
       recognition.onresult = function(event) {
         const speechResult = event.results[0][0].transcript;
         stopEqualizer(staticIcon, waveContainer);
-        
+        if (fromHome) { routeHomeVoice(speechResult); return; }
         processTwoStepVoiceCommand(speechResult);
       };
 
-      recognition.onerror = function() {
+      recognition.onerror = function(ev) {
         stopEqualizer(staticIcon, waveContainer);
+        const code = ev && ev.error;
+        if (code === 'aborted') return;
+        const msg = (code === 'not-allowed' || code === 'service-not-allowed') ? 'マイクの許可がありません。ブラウザの設定でマイクを許可してください。'
+          : code === 'no-speech' ? '声が聞こえませんでした。もう一度お試しください。'
+          : code === 'audio-capture' ? 'マイクが見つかりません。'
+          : code === 'network' ? '音声認識のサーバーにつながりません。通信状況を確認してください。'
+          : '音声認識エラーです。(' + (code || '不明') + ')';
+        try { voiceAnnounce(msg); } catch (e) {}
+        try { if (fromHome && window.AXION && window.AXION.ext && window.AXION.ext.say) window.AXION.ext.say(msg); } catch (e) {}
       };
 
       recognition.onend = function() {
@@ -5564,6 +5584,13 @@ ETC
         waitingForDestinationName = true;
         responseText = "承知いたしました。目的地を設定します。どこに設定いたしますか？";
 
+      } else if (window.AXION && window.AXION.ext && typeof window.AXION.ext.cmd === 'function') {
+        // ナビ画面のマイクでも、ホームと同じ処理(天気・周辺検索・メディア・AIなど)に渡す
+        window.__axVoiceFromNavi = Date.now();
+        playBeepSound('warning');
+        showVoiceBanner('音声認識: ' + command);
+        window.AXION.ext.cmd(command);
+        return;
       } else if (command.includes("して")) {
         responseText = command.replace("して", "します") + "。了解しました。";
       } else if (command.includes("開けて")) {
@@ -5588,6 +5615,33 @@ ETC
       setTimeout(() => {
         banner.classList.add('hidden');
       }, 4000);
+    }
+
+    // 画面上部のバナーに文字を出す(ホームの返事をナビ画面に出すときにも使う)
+    function showVoiceBanner(text) {
+      const banner = document.getElementById('topBanner');
+      const bt = document.getElementById('topBannerText');
+      if (!banner || !bt) return;
+      bt.innerText = text;
+      banner.classList.remove('hidden');
+      clearTimeout(window.__vbT);
+      window.__vbT = setTimeout(() => banner.classList.add('hidden'), 7000);
+    }
+    window.__axSayHook = function (t) { if (Date.now() - (window.__axVoiceFromNavi || 0) < 45000) showVoiceBanner(t); };
+    // ホームのマイクで聞き取った言葉の振り分け:
+    // 目的地・ルート・車の操作など、ナビの音声操作で扱うものはホームを閉じてナビ側の処理へ。それ以外(天気・周辺検索・メディア・AIなど)はホームの処理へ。
+    function routeHomeVoice(text) {
+      const inDialog = waitingForDestinationName || waitingForCandidateNumber || waitingForGoOrWaypoint || waitingForRouteChoice;
+      const naviWords = /目的地|行き先|ルート|案内|経由地|登録|エアコン|窓|番|中止|取り消|取消|キャンセル|やめ|残り|あとどれ/;
+      if (inDialog || naviWords.test(text)) {
+        try { window.AXION && window.AXION.close && window.AXION.close(); } catch (e) {}
+        window.__axVoiceFromNavi = Date.now();
+        processTwoStepVoiceCommand(text);
+      } else if (window.AXION && window.AXION.ext && typeof window.AXION.ext.cmd === 'function') {
+        window.AXION.ext.cmd(text);
+      } else {
+        processTwoStepVoiceCommand(text);
+      }
     }
 
     // 音声アシスタントの発話+画面上部バナー表示をまとめて行う共通ヘルパー
@@ -6762,6 +6816,22 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
           gain2.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.28);
           osc2.start(audioCtx.currentTime + 0.15);
           osc2.stop(audioCtx.currentTime + 0.29);
+        } else if (type === 'navFanfan') {
+          // 40m手前の「ファン、ファン」(音程が下から上へ跳ね上がるラッパ風の音を2回)
+          [0, 0.27].forEach(off => {
+            const t0 = audioCtx.currentTime + off;
+            const o = audioCtx.createOscillator(), g = audioCtx.createGain(), f = audioCtx.createBiquadFilter();
+            o.type = 'sawtooth';
+            f.type = 'lowpass'; f.frequency.setValueAtTime(2000, t0); f.Q.value = 1.2;
+            o.frequency.setValueAtTime(587, t0);
+            o.frequency.exponentialRampToValueAtTime(880, t0 + 0.08);
+            g.gain.setValueAtTime(0.001, t0);
+            g.gain.exponentialRampToValueAtTime(0.26, t0 + 0.03);
+            g.gain.setValueAtTime(0.26, t0 + 0.13);
+            g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.23);
+            o.connect(f); f.connect(g); g.connect(audioCtx.destination);
+            o.start(t0); o.stop(t0 + 0.25);
+          });
         }
       } catch (e) {}
     }
@@ -9409,6 +9479,8 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
           const n = Math.max(1, Math.round(meters / (hw ? 2000 : 150)));
           const mv = valhallaManeuver(m.type);
           if (m.roundabout_exit_count) mv.exit = m.roundabout_exit_count;
+          const sg = m.sign || {};
+          const jn = arr => (arr || []).map(e => e && e.text).filter(Boolean).join('、');
           steps.push({
             distance: meters,
             duration: m.time || 0,
@@ -9416,7 +9488,11 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
             maneuver: mv,
             geometry: { type: 'LineString', coordinates: coords },
             intersections: Array.from({ length: n }, () => (hw ? { classes } : {})),
-            _hw: hw
+            _hw: hw,
+            destinations: jn(sg.exit_toward_elements),
+            exits: jn(sg.exit_number_elements),
+            _signBranch: jn(sg.exit_branch_elements),
+            _signName: jn(sg.exit_name_elements)
           });
         });
         distance += ((leg.summary && leg.summary.length) || 0) * 1000;
@@ -11213,12 +11289,19 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
     // OSRMのsteps配列から「あと何メートルで・どこの交差点で・どちらに曲がるか」のリストを作る
     function buildGuidancePoints(steps) {
       const pts = [];
+      let hwFlags = [];
+      try { hwFlags = stepHighwayFlags(steps); } catch (e) {}
       for (let i = 0; i < steps.length - 1; i++) {
+        const nx = steps[i + 1];
         pts.push({
           distance: steps[i].distance,
-          maneuver: steps[i + 1].maneuver,
-          roadName: jpOnlyName(steps[i + 1].name),
-          stepIndex: i     // 曲がり角の拡大表示で、手前・先のstepの形を取り出すのに使う
+          maneuver: nx.maneuver,
+          roadName: jpOnlyName(nx.name),
+          stepIndex: i,    // 曲がり角の拡大表示で、手前・先のstepの形を取り出すのに使う
+          onHighway: !!hwFlags[i],   // いま走っている道が高速道路か(1km先案内は高速道路だけ)
+          dests: jpOnlyName(String(nx.destinations || '').replace(/,\s*/g, '、')),   // 「京都・大阪方面」の方面名
+          exitName: jpOnlyName(nx._signName || ''),
+          branch: jpOnlyName(nx._signBranch || '')
         });
       }
       return pts;
@@ -11619,7 +11702,7 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
       if (!point || !point.maneuver) return;
       if (point.maneuver.type === 'on ramp') {
         playBeepSound('navChime');
-        setTimeout(() => speak('高速道路に入りました。'), 200);
+        setTimeout(() => speak('高速道路に入りました。この先、実際の交通規制に従って走行してください。'), 200);
       } else if (point.maneuver.type === 'off ramp') {
         // ランダム料金は使わず、走行中の高速区間の距離から概算する。
         // 実際の料金表/APIではないため、音声でも必ず「概算」と伝える。
@@ -11640,34 +11723,86 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
       }
     }
 
-    // 交差点の700m/300m/40m手前でそれぞれ一度ずつ、電子音を鳴らしてから音声案内する
-    // (700m/300mは実際の残り距離を丸めて読み上げる。40mはもう距離を丸めず、
-    //  方向と交差点名だけを案内する)
+    // 音声案内の設定(設定画面から変更できる)
+    let turnPhraseStyle = 'junction';   // 40m手前の言い方: 'plain'=「右です」 / 'junction'=「この交差点を右です」 / 'signal'=「この信号を右です」
+    let hwFarGuide = true;              // 高速道路だけ、およそ1キロ先から案内する
+    try {
+      const ps = localStorage.getItem('turnPhraseStyle'); if (ps === 'plain' || ps === 'junction' || ps === 'signal') turnPhraseStyle = ps;
+      if (localStorage.getItem('hwFarGuide') === '0') hwFarGuide = false;
+    } catch (e) {}
+    function setTurnPhraseStyle(v) {
+      initAudio();
+      turnPhraseStyle = (v === 'plain' || v === 'signal') ? v : 'junction';
+      try { localStorage.setItem('turnPhraseStyle', turnPhraseStyle); } catch (e) {}
+    }
+    function setHwFarGuide(on) {
+      initAudio();
+      hwFarGuide = !!on;
+      try { localStorage.setItem('hwFarGuide', on ? '1' : '0'); } catch (e) {}
+      syncHwFarGuideButtons();
+    }
+    function syncHwFarGuideButtons() {   // 選ばれている方(オン/オフ)を、他の選択ボタンと同じ「色つき」で見せる
+      document.querySelectorAll('#hwFarGuideButtons [data-on]').forEach(b => b.classList.toggle('mset-on', (b.dataset.on === '1') === hwFarGuide));
+    }
+    syncHwFarGuideButtons();
+    document.addEventListener('DOMContentLoaded', () => {
+      const sel = document.getElementById('turnPhraseStyleSel'); if (sel) sel.value = turnPhraseStyle;
+      syncHwFarGuideButtons();
+    });
+
+    // 高速道路の分岐・出口・入口の案内文(「〇〇を〇〇方面へ斜め左方向です」「分岐を斜め左方向です」など)
+    function hwTurnPhrase(point, dirText) {
+      const m = point.maneuver || {};
+      const dir = dirText || '直進方向';
+      const name = (point.branch || point.exitName || '').trim();
+      const road = (point.roadName || '').trim();
+      const dests = (point.dests || '').trim();
+      if (m.type === 'on ramp') {
+        // 例) 草津田中入口、新名神、京都、兵庫、大阪方面です
+        const parts = [name, road].filter((v, i, a) => v && a.indexOf(v) === i);
+        if (dests) parts.push(dests + '方面');
+        return parts.length ? `${parts.join('、')}です。` : `高速道路の入口を${dir}です。`;
+      }
+      const kind = m.type === 'off ramp' ? '出口' : m.type === 'merge' ? '合流' : '分岐';
+      const label = name || road;
+      if (dests) return `${label ? label + 'を' : ''}${dests}方面へ${dir}です。`;
+      return `${kind}を${dir}です。${label ? label + 'です。' : ''}`;
+    }
+
+    // 曲がる前の案内。
+    // ・一般道: 700m / 300m 手前で「およそ○m先、右方向です」→ 40m で「ファンファン」+「この交差点を右です」
+    // ・高速道路: 上に加えて、およそ1キロ先からも案内する(1キロ先の案内は高速道路だけ)
     function announceUpcomingTurn(point, remaining) {
       if (!point || !point.maneuver || point.maneuver.type === 'arrive') return;
-      const dirText = maneuverSpokenText(point.maneuver);
+      const mv = point.maneuver;
+      const hwType = /^(on ramp|off ramp|fork|merge)$/.test(mv.type || '');
+      let dirText = maneuverSpokenText(mv);
+      if (!dirText && hwType) dirText = '直進方向';
       if (!dirText) return;
-      // 道路名を先に言うと、名前が長いときに右か左か聞き取りづらくなるので、
-      // 「右方向です」を先に言い切ってから、道路名をあとに続ける
+      const far = !!point.onHighway && hwFarGuide;
+      const marks = far ? [1000, 700, 300, 40] : [700, 300, 40];
+      // 今の距離に当てはまる一番近い目安だけを案内する(まとめて何度も喋らない)
+      let mark = 0;
+      for (let k = marks.length - 1; k >= 0; k--) { if (remaining <= marks[k]) { mark = marks[k]; break; } }
+      if (!mark || point['_announced' + mark]) return;
+      marks.forEach(mk => { if (mk >= mark) point['_announced' + mk] = true; });
+      // 道路名を先に言うと、名前が長いときに右か左か聞き取りづらくなるので、方向を先に言い切ってから道路名を続ける
       const roadPart = (point.roadName && point.roadName.trim()) ? `${point.roadName.trim()}です。` : '';
 
-      if (remaining <= 700 && !point._announced700) {
-        point._announced700 = true;
-        playBeepSound('navChime');
-        const distText = formatAnnounceDistance(remaining);
-        setTimeout(() => speak(pickPhrase('t700', [`${distText}先、${dirText}です。${roadPart}`, `この先、${distText}で、${dirText}です。${roadPart}`])), 220);
+      if (mark === 40) {
+        // 40mでは方向だけ(「右方向です」)。音(ファンファン)は鳴らさない。「この交差点を」「この信号を」「分岐を」や道路名も付けない
+        setTimeout(() => speak(`${dirText}です。`), 100);
+        return;
       }
-      if (remaining <= 300 && !point._announced300) {
-        point._announced300 = true;
-        playBeepSound('navChime');
-        const distText = formatAnnounceDistance(remaining);
-        setTimeout(() => speak(pickPhrase('t300', [`${distText}先、${dirText}です。${roadPart}`, `まもなく、${distText}先、${dirText}です。${roadPart}`, `この先、${distText}で、${dirText}です。${roadPart}`])), 260);
+      playBeepSound('navChime');
+      if (far || hwType) {
+        const distWord = mark === 1000 ? 'およそ1キロ' : `およそ${mark}メートル`;
+        const body = hwType ? hwTurnPhrase(point, dirText) : `${dirText}です。${roadPart}`;
+        setTimeout(() => speak(`${distWord}先、${body}`), 240);
+        return;
       }
-      if (remaining <= 40 && !point._announced40) {
-        point._announced40 = true;
-        playBeepSound('navChimeUrgent');
-        setTimeout(() => speak(pickPhrase('t40', [`${dirText}です。${roadPart}`, `まもなく、${dirText}です。${roadPart}`, `そこを、${dirText}です。${roadPart}`])), 320);
-      }
+      const distText = formatAnnounceDistance(remaining);
+      setTimeout(() => speak(`${distText}先、${dirText}です。${roadPart}`), mark === 700 ? 220 : 260);
     }
 
     /* ============ メインマップ上の「曲がります」マーク ============
@@ -16770,7 +16905,7 @@ function playQ(i){if(i<0||i>=Q.length)return;qi=i;au.src=Q[i].url;au.play().catc
 function nextT(d){if(!Q.length)return;playQ((qi+d+Q.length)%Q.length)}
 /* ---- Voice / Intelligence ---- */
 var log=[],HK={};
-function say(t){log.unshift(t);log=log.slice(0,8);try{if(S.voice&&window.speechSynthesis){var u=new SpeechSynthesisUtterance(t);u.lang="ja-JP";u.volume=S.vol/100;speechSynthesis.speak(u)}}catch(e){}if(cur==="INTELLIGENCE")render()}
+function say(t){log.unshift(t);log=log.slice(0,8);try{window.__axSayHook&&window.__axSayHook(t)}catch(e){}try{if((S.voice||Date.now()-(window.__axVoiceFromNavi||0)<45000)&&window.speechSynthesis){var u=new SpeechSynthesisUtterance(t);u.lang="ja-JP";u.volume=S.vol/100;speechSynthesis.speak(u)}}catch(e){}if(cur==="INTELLIGENCE")render()}
 function cmd(q){
  q=(q||"").trim();if(!q)return;log.unshift("[[play]] "+q);try{if(HK.cmd&&HK.cmd(q))return}catch(err){}
  var go=function(t){cur=t;render()};
@@ -16797,6 +16932,7 @@ function nearby(q){
   say(window.__axRes.length?"周辺に"+window.__axRes.length+"件あります。":"5km以内に見つかりません。");render()}).catch(function(){say("周辺検索に失敗しました")});
 }
 function startVoice(){
+ if(typeof window.startVoiceRecognition==="function"){log.unshift("聞き取り中… どうぞお話しください");log=log.slice(0,8);if(cur==="INTELLIGENCE")render();try{window.startVoiceRecognition({fromHome:true});return}catch(err){}}
  var R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R){say("このブラウザは音声認識に未対応です");return}
  var r=new R();r.lang="ja-JP";r.onresult=function(e){cmd(e.results[0][0].transcript)};r.onerror=function(){say("音声認識エラー")};try{r.start()}catch(e){}
 }
@@ -17626,7 +17762,9 @@ html.mc #sidePanel:has(#sideWidgetMenu:not(.hidden)){background:#000!important}
 #btStatusIcon.text-cyan-400{color:#fff!important}
 
 /* ---- 中のパネル(車両ステータス・設定・音楽など)も白黒の細線デザインに ---- */
-:is(#sideWidgetHighway,#sideWidgetQuick,#sideWidgetQuickRoad,#sideWidgetQuickZoom,#sideWidgetQuickNearby,#sideWidgetTurn,#sideWidgetMaintenance,#sideWidgetSearch,#sideWidgetMusic,#settingsModal){filter:grayscale(1)}
+:is(#sideWidgetHighway,#sideWidgetQuick,#sideWidgetQuickRoad,#sideWidgetQuickZoom,#sideWidgetQuickNearby,#sideWidgetMaintenance,#sideWidgetSearch,#sideWidgetMusic,#settingsModal){filter:grayscale(1)}
+/* 曲がる交差点の拡大地図だけは、白黒にせず色つきで表示する(周りの文字や枠は今まで通り白黒) */
+#sideWidgetTurn > *:not(#turnMapWrap){filter:grayscale(1)}
 :is(#sideWidgetAC,#sideWidgetHighway,#sideWidgetQuick,#sideWidgetQuickRoad,#sideWidgetQuickZoom,#sideWidgetQuickNearby,#sideWidgetTurn,#sideWidgetMaintenance,#sideWidgetSearch,#sideWidgetDashboard,#sideWidgetMusic,#settingsModal){letter-spacing:.03em}
 #sideWidgetSonar{letter-spacing:.03em}
 #settingsModal{background:#050506!important}
