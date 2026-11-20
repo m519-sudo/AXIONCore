@@ -18214,5 +18214,123 @@ html.mc #sidePanel:has(#sideWidgetMenu:not(.hidden)){background:#000!important}
 </script>
 <!-- ===== /AXION Premium UI ===== -->
 
+<!-- ===== 外部音楽アプリ連携(Spotify/YouTube Music/Apple Music等の再生中情報を受け取る) ===== -->
+<script>
+(function(){
+ var E={d:null,t:0},busy=0,$=function(i){return document.getElementById(i)};
+ function fmt(s){s=Math.max(0,Math.floor(s||0));return Math.floor(s/60)+':'+('0'+s%60).slice(-2)}
+ function pos(){var d=E.d,p=d.pos||0;if(d.playing)p+=(Date.now()-E.t)/1000;if(d.dur>0&&p>d.dur)p=d.dur;return p}
+ function st(el,v){if(el&&el.textContent!==v)el.textContent=v}
+ function apply(){
+  var d=E.d;if(!d)return;
+  st($('musicTitleMain'),d.title||'タイトル不明');
+  st($('musicArtistMain'),d.artist||d.album||'アーティスト不明');
+  var sp=document.querySelectorAll('#musicTitleBlock span');if(sp.length)st(sp[sp.length-1],d.title||'');
+  var b=$('axExtSrc'),ar=$('musicArtistMain');
+  if(!b&&ar){b=document.createElement('div');b.id='axExtSrc';b.style.cssText='font-size:10px;color:#22d3ee;margin-top:2px';ar.parentNode.appendChild(b)}
+  st(b,'♪ '+(d.app||'外部アプリ')+(d.album?' ・ '+d.album:''));
+  var cv=document.querySelector('#musicTitleBlock .bg-slate-900');
+  if(cv){var a=/^(data:image\/|https:)/.test(d.art||'')?d.art:'',bg=a?'url("'+a.replace(/["\\\n\r]/g,'')+'")':'';
+   if(!!cv.style.backgroundImage!==!!bg||cv.__ax!==bg){cv.__ax=bg;cv.style.backgroundImage=bg;cv.style.backgroundSize='cover';cv.style.backgroundPosition='center'}
+   Array.prototype.forEach.call(cv.children,function(c){var v=a?'hidden':'';if(c.style.visibility!==v)c.style.visibility=v})}
+  var pi=document.querySelector('#playBtn i'),cl='fa-solid '+(d.playing?'fa-pause':'fa-play');if(pi&&pi.className!==cl)pi.className=cl;
+  var pr=$('audioProgress');if(pr&&document.activeElement!==pr){pr.max=d.dur>0?Math.floor(d.dur):100;pr.value=Math.floor(pos())}
+  var ts=document.querySelectorAll('#sideWidgetMusic .font-mono span');if(ts.length>1){st(ts[0],fmt(pos()));st(ts[1],d.dur>0?fmt(d.dur):'--:--')}
+ }
+ window.axionNowPlaying=function(d){
+  if(typeof d==='string'){try{d=JSON.parse(d)}catch(e){return}}
+  if(!d||d.gone){E.d=null;var b=$('axExtSrc');if(b)b.remove();return}
+  d.pos=+d.pos||0;d.dur=+d.dur||0;E.d=d;E.t=Date.now();apply();
+ };
+ var sw=$('sideWidgetMusic');
+ if(sw){var ob=new MutationObserver(function(){if(E.d&&!busy){busy=1;apply();ob.takeRecords();busy=0}});
+  ob.observe(sw,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['style','class']})}
+ setInterval(function(){if(E.d)apply()},500);
+ var map={togglePlayMusic:'play_pause',nextTrack:'next',prevTrack:'prev'};
+ Object.keys(map).forEach(function(n){var o=window[n];window[n]=function(){
+  if(E.d&&window.AxionBridge&&AxionBridge.control){try{AxionBridge.control(map[n]);return}catch(e){}}
+  return o&&o.apply(this,arguments)}});
+ if(window.AxionBridge){
+  var had=null;
+  setInterval(function(){
+   var ok=false;try{ok=!!AxionBridge.hasAccess()}catch(e){}
+   var btn=$('axExtPerm');
+   if(!ok&&!btn&&sw){btn=document.createElement('button');btn.id='axExtPerm';btn.type='button';
+    btn.style.cssText='font-size:10px;padding:4px 8px;border-radius:7px;background:#1e293b;border:1px solid #22d3ee;color:#22d3ee;margin:4px 0;cursor:pointer';
+    btn.textContent='音楽アプリ連携を許可する(通知へのアクセス)';btn.onclick=function(){AxionBridge.openSettings()};
+    sw.insertBefore(btn,sw.children[1]||null)}
+   if(ok&&btn)btn.remove();
+   if(ok&&had!==true){try{AxionBridge.sync()}catch(e){}}
+   had=ok},2000);
+ }
+})();
+</script>
+<!-- ===== /外部音楽アプリ連携 ===== -->
+
+<!-- ===== Spotify連携(Web API・読み取り専用) ===== -->
+<script>
+(function(){
+ var K='axSpoCid',T='axSpoTok',V='axSpoVer',on=false,$=function(i){return document.getElementById(i)},RU=location.origin+location.pathname;
+ function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);if(v===null)localStorage.removeItem(k);else localStorage.setItem(k,v)}catch(e){return null}}
+ function rnd(n){var a=new Uint8Array(n),c='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';crypto.getRandomValues(a);return Array.from(a,function(x){return c[x%c.length]}).join('')}
+ async function chal(v){var h=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(v));return btoa(String.fromCharCode.apply(null,new Uint8Array(h))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
+ function msg(t){var s=$('axSpoMsg');if(s)s.textContent=t||''}
+ function lab(){var b=$('axSpoBtn');if(b)b.textContent=ls(T)?'Spotify連携中 ✓':'Spotify連携'}
+ async function login(){
+  var cid=(($('axSpoCid')||{}).value||'').trim();if(!cid){msg('Client IDを入れてね');return}
+  if(!window.crypto||!crypto.subtle){msg('https(GitHub Pages/Netlify)で開いた時だけ使えるよ');return}
+  ls(K,cid);var v=rnd(64),st=rnd(16);ls(V,v+'|'+st);
+  location.href='https://accounts.spotify.com/authorize?'+new URLSearchParams({client_id:cid,response_type:'code',redirect_uri:RU,scope:'user-read-currently-playing user-read-playback-state',code_challenge_method:'S256',code_challenge:await chal(v),state:st});
+ }
+ async function tok(body){
+  var r=await fetch('https://accounts.spotify.com/api/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(body)});
+  if(!r.ok)throw new Error('token '+r.status);
+  var j=await r.json(),o=JSON.parse(ls(T)||'{}');j.exp=Date.now()+j.expires_in*1000-60000;if(!j.refresh_token)j.refresh_token=o.refresh_token;ls(T,JSON.stringify(j));lab();return j;
+ }
+ function logout(){ls(T,null);ls(V,null);if(on){on=false;window.axionNowPlaying&&axionNowPlaying({gone:true})}lab();msg('解除したよ')}
+ async function back(){
+  var q=new URLSearchParams(location.search),c=q.get('code');if(!c&&!q.get('error'))return;
+  var s=(ls(V)||'').split('|');history.replaceState(null,'',RU);
+  if(q.get('error')||!s[0]||q.get('state')!==s[1]){msg('連携できなかったよ');return}
+  try{await tok({grant_type:'authorization_code',code:c,redirect_uri:RU,client_id:ls(K),code_verifier:s[0]});ls(V,null);msg('連携できたよ!')}catch(e){msg('連携に失敗(Redirect URIを確認してね)')}
+ }
+ function gone(){if(on){on=false;axionNowPlaying({gone:true})}}
+ async function poll(){
+  if(document.hidden||!window.axionNowPlaying)return;
+  var o=JSON.parse(ls(T)||'null');if(!o)return;
+  try{
+   if(Date.now()>o.exp)o=await tok({grant_type:'refresh_token',refresh_token:o.refresh_token,client_id:ls(K)});
+   var r=await fetch('https://api.spotify.com/v1/me/player/currently-playing?additional_types=track,episode',{headers:{Authorization:'Bearer '+o.access_token}});
+   if(r.status===204){gone();return}
+   if(r.status===401||r.status===403){msg('許可が切れたよ。もう一度連携してね');return}
+   if(!r.ok)return;
+   var j=await r.json(),it=j.item;if(!it){gone();return}
+   var al=it.album||it.show||{},im=al.images||[];
+   on=true;axionNowPlaying({app:'Spotify',title:it.name,artist:it.artists?it.artists.map(function(a){return a.name}).join(', '):(it.show&&it.show.publisher)||'',album:al.name||'',art:(im[1]||im[0]||{}).url||'',playing:!!j.is_playing,pos:(j.progress_ms||0)/1000,dur:(it.duration_ms||0)/1000});
+  }catch(e){}
+ }
+ function ui(){
+  var sw=$('sideWidgetMusic');if(!sw||$('axSpo'))return;
+  var d=document.createElement('div');d.id='axSpo';d.style.cssText='margin:4px 0;font-size:10px;color:#cbd5e1';
+  var bs='font-size:10px;padding:4px 8px;border-radius:7px;background:#1e293b;border:1px solid #334155;color:#cbd5e1;cursor:pointer';
+  d.innerHTML='<button type=button id=axSpoBtn style="'+bs+';border-color:#22d3ee;color:#22d3ee"></button>'+
+   '<div id=axSpoBox style="display:none;margin-top:4px;padding:6px;border:1px solid #334155;border-radius:8px;background:#0f172a">'+
+   '<div>1. Spotify for Developersでアプリを作り、下のURLをRedirect URIに登録</div>'+
+   '<input id=axSpoRu readonly style="width:100%;margin:3px 0;padding:3px;background:#1e293b;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:10px">'+
+   '<div>2. そのアプリのClient IDを入力</div>'+
+   '<input id=axSpoCid autocomplete=off placeholder="Client ID" style="width:100%;margin:3px 0;padding:3px;background:#1e293b;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:10px">'+
+   '<button type=button id=axSpoGo style="'+bs+'">連携する</button> <button type=button id=axSpoOut style="'+bs+'">解除</button>'+
+   '<div id=axSpoMsg style="margin-top:3px;color:#fbbf24"></div></div>';
+  sw.insertBefore(d,sw.children[1]||null);
+  $('axSpoRu').value=RU;$('axSpoCid').value=ls(K)||'';lab();
+  $('axSpoRu').onfocus=function(){this.select()};
+  $('axSpoBtn').onclick=function(){var b=$('axSpoBox');b.style.display=b.style.display==='none'?'block':'none'};
+  $('axSpoGo').onclick=login;$('axSpoOut').onclick=logout;
+ }
+ back();ui();setInterval(ui,1500);setInterval(poll,5000);setTimeout(poll,1500);
+})();
+</script>
+<!-- ===== /Spotify連携 ===== -->
+
 </body>
 </html>
