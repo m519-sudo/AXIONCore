@@ -523,6 +523,37 @@ body{animation:shoFade .6s ease-out}
 <style id="deviceSelectStyle">
 /* デバイス選択: 写真のデザイン(黒い背景・グレーの板・青い縁・選んだカードが浮いて光る) */
 #bootScreen{background:#0b0b0d !important}
+#axLogo{width:min(88vw,760px);height:auto;overflow:visible}
+#axLogo .ax-font{font:200 104px "Helvetica Neue",Helvetica,Arial,sans-serif;letter-spacing:.14em}
+#axLogo .ax-a,#axLogo .ax-b{fill:transparent;stroke-width:1.3;stroke-linejoin:round;stroke-dasharray:1000;stroke-dashoffset:1000}
+#axLogo .ax-a{stroke:#f4f4f5}
+#axLogo .ax-b{stroke:rgb(var(--ac-rgb,34,211,238))}
+#axLogo .ax-sw{transform:translateX(-260px)}
+#axLogo .ax-ln{stroke:rgb(var(--ac-rgb,34,211,238));stroke-width:1.5;stroke-linecap:round;stroke-dasharray:300;stroke-dashoffset:300;opacity:.9}
+#axLogo.run .ax-a,#axLogo.run .ax-b{animation:axDraw 2.1s cubic-bezier(.55,.1,.25,1) forwards}
+#axLogo.run .ax-a{animation:axDraw 2.1s cubic-bezier(.55,.1,.25,1) forwards,axFillA 1.1s ease 1.7s forwards}
+#axLogo.run .ax-b{animation:axDraw 2.1s cubic-bezier(.55,.1,.25,1) .25s forwards,axFillB 1.1s ease 1.95s forwards}
+#axLogo.run .ax-sw{animation:axSw 1.5s cubic-bezier(.4,0,.2,1) 2.9s forwards}
+#axLogo.run .ax-ln{animation:axDraw 1.1s ease 2.2s forwards}
+@keyframes axDraw{to{stroke-dashoffset:0}}
+@keyframes axFillA{to{fill:#fafafa}}
+@keyframes axFillB{to{fill:rgb(var(--ac-rgb,34,211,238))}}
+@keyframes axSw{to{transform:translateX(1150px)}}
+/* 電源オフ: 起動のロゴアニメーションを逆再生(完成した文字から、色が抜けて、線が消えていく) */
+#axLogoO{width:min(88vw,760px);height:auto;overflow:visible}
+#axLogoO .ax-font{font:200 104px "Helvetica Neue",Helvetica,Arial,sans-serif;letter-spacing:.14em}
+#axLogoO .ax-a,#axLogoO .ax-b{stroke-width:1.3;stroke-linejoin:round;stroke-dasharray:1000;stroke-dashoffset:0}
+#axLogoO .ax-a{fill:#fafafa;stroke:#f4f4f5}
+#axLogoO .ax-b{fill:rgb(var(--ac-rgb,34,211,238));stroke:rgb(var(--ac-rgb,34,211,238))}
+#axLogoO .ax-ln{stroke:rgb(var(--ac-rgb,34,211,238));stroke-width:1.5;stroke-linecap:round;stroke-dasharray:300;stroke-dashoffset:0;opacity:.9}
+#axLogoO .ax-sw{display:none}
+#axLogoO.go .ax-ln{animation:axUndrawLn .9s ease forwards}
+#axLogoO.go .ax-b{animation:axUnfillB 1.1s ease .6s forwards,axUndraw 2.1s cubic-bezier(.3,.1,.45,.9) 1.3s forwards}
+#axLogoO.go .ax-a{animation:axUnfillA 1.1s ease .6s forwards,axUndraw 2.1s cubic-bezier(.3,.1,.45,.9) 1.55s forwards}
+@keyframes axUndraw{to{stroke-dashoffset:1000}}
+@keyframes axUndrawLn{to{stroke-dashoffset:300}}
+@keyframes axUnfillA{to{fill:transparent}}
+@keyframes axUnfillB{to{fill:transparent}}
 .dev-sheet{display:flex;flex-direction:column;align-items:center;gap:18px;width:91.666%;max-width:560px;padding:26px 24px 24px;text-align:center;
   background:#1c1c1c;border:2px solid #3f62a1;border-radius:32px;box-shadow:0 18px 60px rgba(0,0,0,.55)}
 .dev-sheet.hidden{display:none}
@@ -716,16 +747,41 @@ html[data-barpos="right"] body:not(.walk-mode) #speedLimitBadge{right:70px}
     <div id="bootScreen" class="absolute inset-0 z-50 bg-slate-950 flex flex-col items-center justify-center transition-opacity duration-700">
       <div id="bootGlowEffect" class="hidden absolute w-96 h-96 rounded-full bg-gradient-to-r from-cyan-400 via-indigo-500 to-purple-500 boot-light-anim pointer-events-none"></div>
 
-      <!-- STEP 1: Power Button -->
-      <div id="bootStepPower" class="z-10 flex flex-col items-center gap-6">
-        <button onclick="pressPowerButton()" class="w-28 h-28 rounded-full bg-slate-900 border-4 border-cyan-500 hover:border-cyan-400 active:scale-95 shadow-[0_0_60px_rgba(6,182,212,0.5)] flex items-center justify-center text-cyan-400 hover:text-cyan-300 transition group cursor-pointer">
-          <i class="fa-solid fa-power-off text-5xl group-hover:scale-110 transition"></i>
-        </button>
-        <div class="text-center">
-          <div class="text-slate-200 font-black tracking-widest text-lg">AXIONCore POWER</div>
-          <div class="text-slate-500 text-xs mt-1">タップしてシステムを起動</div>
-        </div>
+      <!-- STEP 1: AXIONCore ロゴアニメーション(電源ボタンは廃止。細い線で文字をなぞって描き、色が入り、光が一筋走る。タップで先へ進む) -->
+      <div id="bootStepPower" class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-5 cursor-pointer" onclick="axBootAdvance(true)" aria-label="AXIONCore">
+        <svg id="axLogo" viewBox="0 0 900 170" role="img" aria-label="AXIONCore">
+          <defs>
+            <linearGradient id="axSweepG" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".85"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+            <clipPath id="axClip"><text x="450" y="112" text-anchor="middle" class="ax-font"><tspan>AXION</tspan><tspan dx="16">Core</tspan></text></clipPath>
+          </defs>
+          <text x="450" y="112" text-anchor="middle" class="ax-font"><tspan class="ax-a">AXION</tspan><tspan class="ax-b" dx="16">Core</tspan></text>
+          <g clip-path="url(#axClip)"><g class="ax-sw"><rect x="0" y="0" width="150" height="170" fill="url(#axSweepG)" transform="skewX(-18)"/></g></g>
+          <line class="ax-ln" x1="300" x2="600" y1="146" y2="146"/>
+        </svg>
+        <div id="axHint" style="color:#71717a;font-size:12px;letter-spacing:.34em;opacity:0;transition:opacity .8s">タップして起動</div>
       </div>
+      <script>
+      // 「AXIONCore」: 細い線で文字をなぞって描く → 色が入る → 光が一筋、文字の上を走る
+      (function () {
+        var box = document.getElementById('bootStepPower'), svg = document.getElementById('axLogo'), hint = document.getElementById('axHint');
+        if (!box || !svg) return;
+        var auto = 0, moved = false;
+        function start() {
+          clearTimeout(auto); moved = false; hint.style.opacity = '0'; box.style.transition = 'none'; box.style.opacity = '1';
+          svg.classList.remove('run'); void svg.getBoundingClientRect(); svg.classList.add('run');
+          setTimeout(function () { if (!moved) hint.style.opacity = '1'; }, 3400);
+          auto = setTimeout(function () { axBootAdvance(false); }, 5600);   // 触らなくても、少しして次の画面へ進む
+        }
+        window.axBootAdvance = function () {
+          if (moved) return; moved = true; clearTimeout(auto);
+          box.style.transition = 'opacity .5s'; box.style.opacity = '0';
+          setTimeout(function () { if (typeof bootStartApp === 'function') bootStartApp(); }, 450);
+        };
+        // 電源オフのあと、この画面がまた表示されたら、アニメーションを最初から流す
+        new MutationObserver(function () { if (!box.classList.contains('hidden') && moved) start(); }).observe(box, { attributes: true, attributeFilter: ['class'] });
+        start();
+      })();
+      </script>
 
       <!-- STEP 2: Device Aspect Selection Modal -->
       <div id="bootStepDeviceSelect" class="hidden z-20 dev-sheet" role="dialog" aria-label="デバイス選択">
@@ -5764,6 +5820,7 @@ ETC
     // 選ばれた候補地を地図中央に表示し、既存の十字ピン操作パネル(ここへ行く/経由地として設定)を流用する
     function showCandidatePreviewOnMap(cand) {
       if (!map) return;
+      if (candidateBaseZoom === null) candidateBaseZoom = map.getZoom();
       map.setView([cand.lat, cand.lon], 15, { animate: true });
       crosshairActive = true;
       const crosshair = document.getElementById('mapCrosshair');
@@ -6068,6 +6125,15 @@ ETC
       }
     }
 
+    // 起動: AXIONCoreのロゴのあと、デバイス選択なしでそのままアプリを開く。
+    // 画面モードは自動で決める(短い辺が700px未満ならスマホ版、それ以外はワイド版)。前に選んだ設定が残っていればそれを使う
+    function bootStartApp() {
+      initAudio();
+      let mode = null;
+      try { mode = localStorage.getItem('deviceMode'); } catch (e) {}
+      if (mode !== 'phone' && mode !== 'dex' && mode !== 'walk') mode = (Math.min(screen.width, screen.height) < 700) ? 'phone' : 'dex';
+      selectDeviceMode(mode);
+    }
     function pressPowerButton() {
       initAudio();
       document.getElementById('bootStepPower').classList.add('hidden');
@@ -6135,9 +6201,6 @@ function selectDeviceMode(mode) {
 setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
 
       document.getElementById('bootStepDeviceSelect').classList.add('hidden');
-      document.getElementById('bootGlowEffect').classList.remove('hidden');
-      playCyberBootSound();
-      try { shoSplash('on'); } catch (e) { /* 無視 */ }
 
       setTimeout(() => {
         const screen = document.getElementById('bootScreen');
@@ -6147,8 +6210,8 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
           if (map) { map.invalidateSize(); refocusOnUserAfterResize(); setTimeout(refocusOnUserAfterResize, 600); }
           initThreeJS();
           if (!document.body.classList.contains('walk-mode')) startDriveWatch();   // 3Dビューが出た。30秒の見張りを始める(歩行者モードでは不要)
-        }, 700);
-      }, 1800);
+        }, 500);
+      }, 0);
     }
 
     function openSettingsModal() {
@@ -8111,8 +8174,8 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
     }
 
     function initRealMap() {
-      map = L.map('realMap', { zoomControl: false, attributionControl: false, dragging: false })
-        .setView([DEFAULT_POS.lat, DEFAULT_POS.lon], 14);
+      map = L.map('realMap', { zoomControl: false, attributionControl: false, dragging: false, zoomSnap: 0 })
+        .setView([DEFAULT_POS.lat, DEFAULT_POS.lon], savedScaleZoom());
 
       mapTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
@@ -8305,7 +8368,7 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
           (pos) => {
             userPos = { lat: pos.coords.latitude, lon: pos.coords.longitude };
             placeUserMarker();
-            setViewOnUser([userPos.lat, userPos.lon], 15);
+            setViewOnUser([userPos.lat, userPos.lon], savedScaleZoom());
             resolve(userPos);
           },
           () => {
@@ -8341,7 +8404,7 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
           userPos = { lat: pos.coords.latitude, lon: pos.coords.longitude };
           placeUserMarker();
           if (map) {
-            setViewOnUser([userPos.lat, userPos.lon], 16, { animate: true });
+            setViewOnUser([userPos.lat, userPos.lon], savedScaleZoom(), { animate: true });
           }
           statusEl.textContent = 'GPS取得に成功しました';
           coordEl.textContent = `緯度経度: ${userPos.lat.toFixed(6)}, ${userPos.lon.toFixed(6)} (精度: 約${Math.round(pos.coords.accuracy)}m)`;
@@ -8877,8 +8940,11 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
       }
     }
 
-    function closePinPanel() {
+    function closePinPanel(keepZoom) {
       crosshairActive = false;
+      if (candidateBaseZoom !== null) {   // 候補地の地図表示をやめるときは、見る前の縮尺に戻す(目的地にするときは、ルート表示のあとに戻す)
+        if (keepZoom !== true) { candidateBaseZoom = null; try { map && map.setZoom(savedScaleZoom(), { animate: false }); } catch (e) {} }
+      }
       waitingForGoOrWaypoint = false;
       pendingVoiceDestination = null;
       document.getElementById('mapCrosshair').classList.add('hidden');
@@ -8888,7 +8954,7 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
     async function pinGoHere() {
       if (!map) return;
       const c = map.getCenter();
-      closePinPanel();
+      closePinPanel(true);
       await setDestinationFromLatLng(c.lat, c.lng);
     }
 
@@ -11170,6 +11236,8 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
     // 目的地の座標・名前が決まった後の共通処理(ルート計算・カード表示など)
     async function finalizeDestination(dest, name, opts = {}) {
       clearWaypoints();   // 目的地が変わったら、前の経由地は消す
+      if (map && preOverviewZoom === null) preOverviewZoom = (candidateBaseZoom !== null) ? candidateBaseZoom : map.getZoom();   // 今の縮尺(例: 200m)を覚えておく
+      candidateBaseZoom = null;
       routeOverviewActive = !opts.autoStart;
       if (!userPos) await tryGetUserPosition();
 
@@ -11557,6 +11625,45 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
        北を上にして、現在地・目的地・ルート全部が画面に入るように地図を合わせる。
        この画面の間は、GPSが動いても地図の向きや位置は変えない(戻る/出発/デモで解除)。 */
     let routeOverviewActive = false;
+    // 全ルート表示(ルートを選ぶ画面)に入る前の地図の縮尺。出発・デモ走行・戻るで、この縮尺に戻す
+    let preOverviewZoom = null;
+    // 地図の縮尺は「画面の線100pxが何mか」で決める。標準は200m。選んだ縮尺は覚えておく(端末に保存)
+    const MAP_SCALE_DEFAULT_M = 200;
+    function savedScaleMeters() {
+      try { const v = parseFloat(localStorage.getItem('mapScaleM')); if (v >= 25 && v <= 10000) return v; } catch (e) {}
+      return MAP_SCALE_DEFAULT_M;
+    }
+    function scaleZoomFor(m) {
+      let lat = 35.7;
+      try { lat = (userPos && userPos.lat) || DEFAULT_POS.lat || 35.7; } catch (e) {}
+      return Math.max(5, Math.min(19, Math.log2(156543.03 * Math.cos(lat * Math.PI / 180) / (m / 100))));
+    }
+    function savedScaleZoom() { if (map) map.options.zoomSnap = 0; return scaleZoomFor(savedScaleMeters()); }
+    function rememberCurrentScale() {   // 地図を指で拡大・縮小したあとの縮尺も覚える
+      try {
+        if (!map || routeOverviewActive || crosshairActive || candidateBaseZoom !== null) return;
+        const z = map.getZoom(), lat = (userPos && userPos.lat) || 35.7;
+        localStorage.setItem('mapScaleM', String(156543.03 * Math.cos(lat * Math.PI / 180) / Math.pow(2, z) * 100));
+      } catch (e) {}
+    }
+    let candidateBaseZoom = null;   // 候補地の地図表示(縮尺15に寄る)に入る前の縮尺
+    (function () {
+      let t = 0;
+      const arm = () => { clearTimeout(t); t = setTimeout(rememberCurrentScale, 900); };
+      document.addEventListener('DOMContentLoaded', () => {
+        const c = document.getElementById('mapContainer');
+        if (c) ['touchend', 'wheel', 'dblclick'].forEach(ev => c.addEventListener(ev, arm, { passive: true }));
+      });
+    })();
+    function restorePreOverviewZoom() {
+      if (preOverviewZoom === null || !map) return;
+      preOverviewZoom = null;
+      const z = savedScaleZoom();
+      try {
+        if (userPos) setViewOnUser([userPos.lat, userPos.lon], z, { animate: false });
+        else map.setZoom(z, { animate: false });
+      } catch (e) {}
+    }
     function isRouteOverview() {
       return routeOverviewActive && !isNavigating && !demoTimer;
     }
@@ -11618,6 +11725,7 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
       if (!isMinimalMode) document.getElementById('sidePanel').classList.remove('hidden');
       toggleSidePanel('menu');
       if (map && userPos) panToUser([userPos.lat, userPos.lon], { animate: true, duration: 0.3 });
+      restorePreOverviewZoom();   // 全ルートを見る前の縮尺に戻す
     }
 
     // 「全行程」ボタン: 表示中のルート全部が入るように地図を合わせる
@@ -12087,6 +12195,7 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
 
       startRealGuidanceTracking();
       startHighwayGuidance(false);
+      restorePreOverviewZoom();   // 全ルートを見る前の縮尺に戻す
       if (currentSideMode === 'routes') toggleSidePanel('menu');
       document.getElementById('activeRouteTerminationWrapper').classList.remove('hidden');
 
@@ -12119,6 +12228,7 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
       clearWaypoints();
       clearNavRemaining();
       stopHighwayGuidance(true);
+      restorePreOverviewZoom();
       if (!isMinimalMode) document.getElementById('sidePanel').classList.remove('hidden');
       toggleSidePanel('menu');
       playBeepSound('warning');
@@ -12293,7 +12403,9 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
       // 地図をスクロールして見ている間(十字ピンが出ている間)は、自動追従を止める。「現在地」か「閉じる」で追従に戻る
       if (!demoFollowStarted) {
         demoFollowStarted = true;
-        setViewOnUser(pos, 17, { animate: false });
+        const demoZ = savedScaleZoom();   // 覚えている縮尺(標準は200m)で走る
+        preOverviewZoom = null;
+        setViewOnUser(pos, demoZ, { animate: false });
       } else {
         panToUser(pos, { animate: false });
       }
@@ -14539,12 +14651,14 @@ if (walkModeOn()) return;   // 歩行者モードではカメラを使わない
       initAudio(); if (typeof map === 'undefined' || !map) return;
       map.options.zoomSnap = 0;                                    // 25m・150mなど、ちょうどの縮尺にするため、中間のズームを許す
       const z = Math.max(5, Math.min(19, qzZoomForMeters(m)));
+      try { localStorage.setItem('mapScaleM', String(m)); } catch (e) {}
       if (userPos && !crosshairActive) setViewOnUser([userPos.lat, userPos.lon], z, { animate: true }); else map.setZoom(z);
       setTimeout(quickZoomRefresh, 450); quickZoomRefresh(z);
     }
     function quickMapZoomTo(z) {
       initAudio(); if (typeof map === 'undefined' || !map) return;
       z = Math.max(5, Math.min(19, Math.round(z)));
+      try { localStorage.setItem('mapScaleM', String(qzMetersForZoom(z))); } catch (e) {}
       if (userPos && !crosshairActive) setViewOnUser([userPos.lat, userPos.lon], z, { animate: true }); else map.setZoom(z);
       setTimeout(quickZoomRefresh, 450); quickZoomRefresh(z);
     }
@@ -16533,7 +16647,7 @@ window.shoCfg={get:function(k){try{var o=JSON.parse(localStorage.getItem('shoCar
     document.getElementById('poCrt').style.display='none';
     window.shoSplash('off');
     try{shoOffSound();}catch(e){}   // 起動音とは別の、終了の音
-    later(toBoot,2200);
+    later(toBoot,3900);
   }
   /* ===== 起動音(かっこいい版)と、終了音(別の音) ===== */
   function AC(){try{initAudio();}catch(e){} return (typeof audioCtx!=='undefined')?audioCtx:null;}
@@ -16567,7 +16681,21 @@ window.shoCfg={get:function(k){try{var o=JSON.parse(localStorage.getItem('shoCar
     noise(c,o,4000,150,t+.4,1.6,.1);
     tone(c,o,'sine',90,40,t+1.9,.5,.3);                     // 最後の「ドン」
   }catch(e){}};
+  // 電源オフ: AXIONCoreのロゴを、完成した状態から逆再生で消していく
+  window.axLogoOff=function(){
+    try{
+      var src=document.getElementById('axLogo'); if(!src)return false;
+      var ov=document.getElementById('axOffOverlay');
+      if(!ov){ov=document.createElement('div');ov.id='axOffOverlay';ov.style.cssText='position:fixed;inset:0;z-index:9900;background:#0b0b0d;display:none;align-items:center;justify-content:center;opacity:1;transition:opacity .25s';document.body.appendChild(ov);}
+      ov.innerHTML=src.outerHTML.replace(/axClip/g,'axClipO').replace(/axSweepG/g,'axSweepGO').replace('id="axLogo"','id="axLogoO"').replace(/class="run"/,'');
+      var lg=ov.firstChild; lg.setAttribute('class','');
+      ov.style.opacity='1';ov.style.display='flex';void lg.getBoundingClientRect();lg.setAttribute('class','go');
+      setTimeout(function(){ov.style.opacity='0';setTimeout(function(){ov.style.display='none';},300);},3700);
+      return true;
+    }catch(e){return false;}
+  };
   window.shoSplash=function(mode){
+    if(mode==='off'&&window.axLogoOff())return;
     var e=document.getElementById('shoSplash'),bar=document.getElementById('ssBar'),off=mode==='off';
     e.style.setProperty('--a',off?'#fb7185':'#22d3ee');e.style.setProperty('--b',off?'#f59e0b':'#a855f7');
     document.getElementById('ssSub').textContent=off?'SHUTTING DOWN':'SYSTEM BOOT';
@@ -16605,7 +16733,7 @@ window.shoCfg={get:function(k){try{var o=JSON.parse(localStorage.getItem('shoCar
   var CAR_ROWS=[['poEco','Power OFFでエコレベルを表示','電源を切るとき、エコレベルを大きく表示します'],
     ['poTip','Power OFFで1日1つ豆知識','エコレベルのあと、車の豆知識を1つ表示します(毎回ちがう内容)'],
     ['poVoice','Power OFF中の音声読み上げ','エコレベルと豆知識を声で読み上げます'],
-    ['sound','起動音・終了音','デバイス選択のあとと、電源オフの最後に鳴る音'],
+    ['sound','終了音','電源オフの最後に鳴る音'],
     ['maint','オイル交換・車検の通知','走行距離や期限が近づいたら知らせます'],
     ['traffic','渋滞・事故の音声通知','案内中、この先の渋滞や事故を声で知らせます'],
     ['log','走行ログの記録','月ごとの集計と、パーソナルルートの学習に使います'],
@@ -17762,7 +17890,9 @@ html.mc #sidePanel:has(#sideWidgetMenu:not(.hidden)){background:#000!important}
 #btStatusIcon.text-cyan-400{color:#fff!important}
 
 /* ---- 中のパネル(車両ステータス・設定・音楽など)も白黒の細線デザインに ---- */
-:is(#sideWidgetHighway,#sideWidgetQuick,#sideWidgetQuickRoad,#sideWidgetQuickZoom,#sideWidgetQuickNearby,#sideWidgetMaintenance,#sideWidgetSearch,#sideWidgetMusic,#settingsModal){filter:grayscale(1)}
+:is(#sideWidgetHighway,#sideWidgetQuick,#sideWidgetQuickRoad,#sideWidgetQuickZoom,#sideWidgetQuickNearby,#sideWidgetMaintenance,#sideWidgetSearch,#settingsModal){filter:grayscale(1)}
+/* オーディオ画面の地図だけは色つきに(それ以外の部品は今まで通り白黒) */
+#sideWidgetMusic *:not(#musicMapBox):not(#musicMapBox *):not(:has(#musicMapBox)){filter:grayscale(1)}
 /* 曲がる交差点の拡大地図だけは、白黒にせず色つきで表示する(周りの文字や枠は今まで通り白黒) */
 #sideWidgetTurn > *:not(#turnMapWrap){filter:grayscale(1)}
 :is(#sideWidgetAC,#sideWidgetHighway,#sideWidgetQuick,#sideWidgetQuickRoad,#sideWidgetQuickZoom,#sideWidgetQuickNearby,#sideWidgetTurn,#sideWidgetMaintenance,#sideWidgetSearch,#sideWidgetDashboard,#sideWidgetMusic,#settingsModal){letter-spacing:.03em}
