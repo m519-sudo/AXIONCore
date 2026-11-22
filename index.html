@@ -14,6 +14,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.vectorgrid@1.3.0/dist/Leaflet.VectorGrid.bundled.min.js"></script>
   <style>
     /* 検索画面: 住所(日本地図)・電話番号・マップコード */
     .sx-tabs { display: flex; gap: 6px; overflow-x: auto; flex-shrink: 0; padding-bottom: 2px; -webkit-overflow-scrolling: touch; }
@@ -1142,12 +1143,13 @@ ETC
             </button>
             <span class="text-xs font-black text-cyan-400">高速道路 案内</span><span class="reroute-badge hidden items-center gap-0.5 text-[9px] font-black text-amber-300 bg-amber-950 border border-amber-500/60 px-1 py-0.5 rounded leading-none"><span class="inline-block animate-spin"><i class="fa-solid fa-rotate"></i></span>再探索中</span>
           </div>
-          <div class="rounded-lg overflow-hidden" style="background:#000;border:1px solid #555">
+          <div class="rounded-lg overflow-hidden" style="background:linear-gradient(135deg,#075e38,#00a35c);border:2px solid #f4fff8;box-shadow:0 2px 10px rgba(0,163,92,.35)">
             <div style="display:flex;align-items:center;gap:8px;padding:8px">
-              <span style="flex:none;width:24px;height:24px;border-radius:50%;background:#fff;color:#1d4ed8;font:900 9px/24px system-ui;text-align:center">出口</span>
+              <span style="flex:none;width:24px;height:24px;border-radius:50%;background:#fff;color:#075e38;font:900 9px/24px system-ui;text-align:center">出口</span>
               <div style="min-width:0;flex:1">
-                <div id="hwExitInfo" style="font:11px ui-monospace,monospace;color:#cbd5e1"></div>
-                <div id="hwExitToll" style="font-size:12px;color:#fff;font-weight:700;margin-top:2px"></div>
+                <div id="hwExitTitle" style="font-size:15px;font-weight:900;color:#fff;line-height:1.2;margin-bottom:2px"></div>
+                <div id="hwExitInfo" style="font:11px ui-monospace,monospace;color:#e7fff1"></div>
+                <div id="hwExitToll" style="font-size:12px;color:#fde68a;font-weight:800;margin-top:2px"></div>
               </div>
             </div>
             <span id="hwExitName" class="hidden"></span><span id="hwRoadInfo" class="hidden"></span><span id="hwJamInfo" class="hidden"></span>
@@ -1188,6 +1190,9 @@ ETC
             </button>
             <button onclick="quickHighwayAhead()" class="bg-slate-900 hover:bg-slate-800 active:scale-95 border border-slate-700 rounded-lg py-2 flex flex-col items-center gap-1 text-slate-200">
               <i class="fa-solid fa-road-circle-check text-cyan-400"></i><span class="text-[10px] font-bold">高速の先の情報</span>
+            </button>
+            <button onclick="quickToggleTraffic()" class="bg-slate-900 hover:bg-slate-800 active:scale-95 border border-slate-700 rounded-lg py-2 flex flex-col items-center gap-1 text-slate-200">
+              <i class="fa-solid fa-traffic-light text-cyan-400"></i><span id="quickTrafficLabel" class="text-[10px] font-bold">渋滞表示</span>
             </button>
             <button onclick="toggleSidePanel('quickZoom')" class="bg-slate-900 hover:bg-slate-800 active:scale-95 border border-slate-700 rounded-lg py-2 flex flex-col items-center gap-1 text-slate-200">
               <i class="fa-solid fa-magnifying-glass-plus text-cyan-400"></i><span class="text-[10px] font-bold">地図の縮尺</span>
@@ -3338,6 +3343,47 @@ ETC
       drawnWays: new Set(), mesh: null, fs: new Float32Array(1600 * 5)
     };
     const OSM_W = { motorway: 14, trunk: 12, primary: 10, secondary: 8.5, tertiary: 7.5, unclassified: 6.5, residential: 6, living_street: 5, service: 4, motorway_link: 6.5, trunk_link: 6.5, primary_link: 6, secondary_link: 6, tertiary_link: 6 };
+    // ===== 地図データのサーバー(Overpass)への問い合わせの「交通整理」(アプリ全体で、ぜんぶここを通る) =====
+    // 3Dの道・経路分析・駐車場・高速の施設…が、それぞれ好き勝手にサーバーへ問い合わせて、サーバーに断られる(429・時間切れ)原因になっていた。
+    // → 同時に出す問い合わせは、アプリ全体で最大2つまで。高速の施設の問い合わせ(右側)を先に通す。
+    (function () {
+      if (window.__ovpGate) return;
+      window.__ovpGate = true;
+      const realFetch = window.fetch.bind(window), LIMIT = 2, GAP_MS = 250, queue = [];
+      let active = 0, lastStart = 0, pumping = false;
+      const isOvp = u => /overpass/i.test(String((u && u.url) || u));
+      const abortErr = () => { const e = new Error('aborted'); e.name = 'AbortError'; return e; };
+      function pump() {
+        if (pumping) return;
+        pumping = true;
+        const tick = () => {
+          while (queue.length && active < LIMIT) {
+            queue.sort((a, b) => b.pri - a.pri || a.t - b.t);
+            const wait = lastStart + GAP_MS - Date.now();
+            if (wait > 0) { setTimeout(tick, wait); return; }
+            const j = queue.shift();
+            if (j.opts && j.opts.signal && j.opts.signal.aborted) { j.reject(abortErr()); continue; }     // 待ってる間に、もう要らなくなった問い合わせは出さない
+            active++; lastStart = Date.now();
+            realFetch(j.url, j.opts).then(j.resolve, j.reject).finally(() => { active--; tick(); });
+          }
+          if (!queue.length || active >= LIMIT) pumping = false;
+          if (queue.length && active < LIMIT) tick();
+        };
+        tick(); pumping = false;
+      }
+      window.fetch = function (url, opts) {
+        if (!isOvp(url) || (opts && opts.__bypass)) return realFetch(url, opts);
+        return new Promise((resolve, reject) => {
+          const job = { url, opts, resolve, reject, pri: (opts && opts.__hw) ? 1 : 0, t: Date.now() };
+          queue.push(job);
+          if (opts && opts.signal) opts.signal.addEventListener('abort', () => { const i = queue.indexOf(job); if (i >= 0) { queue.splice(i, 1); reject(abortErr()); } });     // 順番待ちのまま中止されたら、列から外す
+          pump();
+        });
+      };
+      window.__ovpGateInfo = () => ({ active, waiting: queue.length });
+    })();
+    // 高速の施設の解析中は、3Dの道の先読みをお休みして、サーバーを施設の解析に譲る(最長8分で自動的に再開)
+    window.hwPriority = function () { return !!window.__hwPri && Date.now() - (window.__hwPriAt || 0) < 480000; };
     const OSM_EP = [
       'https://overpass-api.de/api/interpreter',
       'https://overpass.private.coffee/api/interpreter',
@@ -3380,6 +3426,7 @@ ETC
       };
       const worker = async () => {
         while (A.key === key) {
+          if (window.hwPriority && window.hwPriority()) { await sleep(1500); continue; }     // 高速の施設の解析中はお休み
           const i = pick();
           if (i < 0) {
             if (A.chunks.every(ch => ch.els || ch.dead || ch.dropped)) break;
@@ -3395,7 +3442,7 @@ ETC
           else { ch.tries++; if (ch.tries >= 3) { ch.dead = true; A.failed++; } else await sleep(1500 * ch.tries); }
         }
       };
-      Promise.all([worker(), worker(), worker()]).then(() => { if (A.key === key) A.running = false; });
+      Promise.all([worker(), worker()]).then(() => { if (A.key === key) A.running = false; });
     }
     // 車の位置に一番近い区間
     function g3dOsmNearChunk(lat, lon) {
@@ -3462,23 +3509,22 @@ ETC
     function g3dOsmQuery(q) {
       const urls = OSM_EP, reasons = [], ctls = [];
       return new Promise(resolve => {
-        let pending = urls.length, done = false;
-        urls.forEach(async (ep) => {
-          const host = ep.split('/')[2], ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 9000);
-          ctls.push(ctl);
-          try {
-            const res = await fetch(ep, { method: 'POST', body: 'data=' + encodeURIComponent(q), headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, signal: ctl.signal });
-            if (!res.ok) throw new Error('HTTP ' + res.status);
-            const data = await res.json();
-            if (!data || !data.elements) throw new Error('bad format');
-            if (!done) { done = true; ctls.forEach(c => c.abort()); resolve({ data }); }
-          } catch (e) {
-            if (!done) reasons.push(host + ' ' + (e && e.name === 'AbortError' ? 'timeout' : (e && e.message) || 'no connection'));
-          } finally {
-            clearTimeout(to);
-            if (--pending === 0 && !done) { done = true; resolve({ data: null, reasons: reasons.join(' / ') }); }
-          }
-        });
+        let started = 0, pending = 0, done = false;
+        const finish = v => { if (done) return; done = true; ctls.forEach(c => { try { c.abort(); } catch (e) { /* 無視 */ } }); resolve(v); };
+        const startNext = () => {
+          if (done) return;
+          if (started >= urls.length) { if (pending === 0) finish({ data: null, reasons: reasons.join(' / ') }); return; }
+          const ep = urls[started++], host = ep.split('/')[2], ctl = new AbortController();
+          ctls.push(ctl); pending++;
+          const to = setTimeout(() => ctl.abort(), 9000);
+          const hedge = setTimeout(() => { if (pending < 2) startNext(); }, 2500);     // 2.5秒返事がなければ、待ちながら次のサーバーにも聞く(同時には最大2つまで)
+          fetch(ep, { method: 'POST', body: 'data=' + encodeURIComponent(q), headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, signal: ctl.signal })
+            .then(res => { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
+            .then(data => { if (!data || !data.elements) throw new Error('bad format'); finish({ data }); })
+            .catch(e => { if (!done) reasons.push(host + ' ' + (e && e.name === 'AbortError' ? 'timeout' : (e && e.message) || 'no connection')); })
+            .finally(() => { clearTimeout(to); clearTimeout(hedge); pending--; if (!done) startNext(); });
+        };
+        startNext();
       });
     }
     // 道を取る。prefetch=true なら、表示には使わず保存だけする(先読み)
@@ -3512,7 +3558,7 @@ ETC
     // 先読み: 今の場所の少し先と、ルートがあればルート沿いの先400m・800m・1200m・1600mの道を、使う前に保存しておく
     function g3dOsmPrefetchTick() {
       const O = OSM3D;
-      if (OSM_ALL.running || OSM_ALL.ok || O.pfBusy || typeof userPos === 'undefined' || !userPos || document.hidden) return;
+      if (OSM_ALL.running || OSM_ALL.ok || O.pfBusy || typeof userPos === 'undefined' || !userPos || document.hidden || (window.hwPriority && window.hwPriority())) return;
       if (performance.now() - O.lastTry < Math.min(6000, 1500 * (1 + O.fails))) return;
       const hd = ((typeof currentHeadingDeg === 'number' && Number.isFinite(currentHeadingDeg)) ? currentHeadingDeg : 0) * OSM_D2R, k = Math.cos(userPos.lat * OSM_D2R);
       const cands = [[userPos.lat + Math.cos(hd) * 120 / G3D_R / OSM_D2R, userPos.lon + Math.sin(hd) * 120 / (G3D_R * k) / OSM_D2R]];
@@ -4581,8 +4627,8 @@ ETC
       while (f > 10 && x.measureText(text).width > maxW) { f -= 2; x.font = (weight || 'bold') + ' ' + f + 'px sans-serif'; }
       return f;
     }
-    function g3dSignArrow(x, ax, ay, len, ang) {                       // 上向きの矢印を ang(ラジアン) だけ傾けて描く
-      x.save(); x.translate(ax, ay); x.rotate(ang); x.fillStyle = '#fff';
+    function g3dSignArrow(x, ax, ay, len, ang, col) {                  // 上向きの矢印を ang(ラジアン) だけ傾けて描く(col=色。通る方は黄色)
+      x.save(); x.translate(ax, ay); x.rotate(ang); x.fillStyle = col || '#fff';
       x.fillRect(-7, -len, 14, len); x.beginPath(); x.moveTo(-24, -len + 2); x.lineTo(24, -len + 2); x.lineTo(0, -len - 36); x.closePath(); x.fill(); x.restore();
     }
     function g3dSignBadge(x, bx, by, bw, ref, route, en) {            // 白い角丸の枠: [E1] 名神 / MEISHIN EXP
@@ -4623,7 +4669,7 @@ ETC
           x.fillStyle = '#0b5ea8'; x.textAlign = 'center'; g3dSignFit(x, sp.dist, 114, 30); x.fillText(sp.dist, 95, 198);
         }
         const md = sp.mod || 'straight', ang = /sharp/.test(md) ? (/left/.test(md) ? -2.2 : 2.2) : /slight/.test(md) ? (/left/.test(md) ? -0.6 : 0.6) : /left/.test(md) ? -1.57 : /right/.test(md) ? 1.57 : 0;
-        g3dSignArrow(x, W - 160, H - 30, 84, ang);
+        g3dSignArrow(x, W - 160, H - 30, 84, ang, '#ffd93d');
         return;
       }
       const route = sp.route || '', hasRoute = !!(route || sp.ref);
@@ -4632,7 +4678,7 @@ ETC
         x.textAlign = 'left'; g3dSignFit(x, sp.name, W - 140, 54); x.fillText(sp.name, 30, 46);
         g3dSignFit(x, sp.en || 'ENTRANCE', W - 140, 22, '600'); x.fillText(sp.en || 'ENTRANCE', 32, 86);
         if (hasRoute) g3dSignBadge(x, 24, H - 84, 230, sp.ref, route, sp.routeEn);
-        g3dSignArrow(x, W - 60, H - 22, 66, 0);
+        g3dSignArrow(x, W - 60, H - 22, 66, 0, '#ffd93d');
         return;
       }
       if (sp.kind === 'thru') {                                         // 本線の標識: 路線 + 方面 + まっすぐの矢印
@@ -4640,7 +4686,7 @@ ETC
         x.textAlign = 'left';
         dn.forEach((d, i) => { g3dSignFit(x, d.name, 230, 44); x.fillText(d.name, 30, 130 + i * 56); });
         if (dn.length && dn.some(d => d.en)) { g3dSignFit(x, dn.map(d => d.en || '').join('  '), 230, 15, '600'); x.fillText(dn.map(d => d.en || '').join('  '), 32, H - 26); }
-        g3dSignArrow(x, W - 100, H - 30, 150, 0);
+        g3dSignArrow(x, W - 100, H - 30, 150, 0, sp.thruOff ? '#fff' : '#ffd93d');
         return;
       }
       // 出口の予告標識
@@ -4653,10 +4699,11 @@ ETC
       }
       if (hasRoute) g3dSignBadge(x, 24, 84, 230, sp.ref, route, sp.routeEn);
       x.fillStyle = '#fff'; x.textAlign = 'left';
-      dn.forEach((d, i) => { g3dSignFit(x, d.name, 130, 34); x.fillText(d.name, 30 + i * 110, 188); });
+      const dw = Math.max(80, (W - 30 - 170) / Math.max(1, dn.length));   // 矢印の手前までの幅を、行き先の数で分ける
+      dn.forEach((d, i) => { g3dSignFit(x, d.name, dw - 14, 34); x.fillText(d.name, 30 + i * dw, 188); });
       const left = !/right/.test(sp.mod || '');                         // 出口は左へ分かれるのがふつう
-      g3dSignArrow(x, W - 120, H - 18, 66, 0);
-      g3dSignArrow(x, W - 120, H - 50, 50, left ? -0.62 : 0.62);
+      g3dSignArrow(x, W - 120, H - 18, 66, 0, sp.takes ? '#fff' : '#ffd93d');                 // まっすぐ(本線)
+      g3dSignArrow(x, W - 120, H - 50, 50, left ? -0.62 : 0.62, sp.takes ? '#ffd93d' : '#fff');   // 出口へ分かれる道。ルートが通る方を黄色に
     }
 
     // 高速区間(g3dHwIntervals)ごとに、路線番号と路線名をstepから拾う
@@ -4719,7 +4766,7 @@ ETC
       } else {
         const sp = g3dHwSpecFor(iv, exits, e, c.dd, route, routeEn);
         g.userData.spec = sp;
-        g3dHwDrawSign(pl.cv, sp); g3dHwDrawSign(pr.cv, Object.assign({ kind: 'thru', dests: sp.dests }, base));
+        g3dHwDrawSign(pl.cv, sp); g3dHwDrawSign(pr.cv, Object.assign({ kind: 'thru', dests: sp.dests, thruOff: sp.takes }, base));
       }
       pl.tex.needsUpdate = true; pr.tex.needsUpdate = true;
     }
@@ -4734,7 +4781,7 @@ ETC
       const exits = g3dHwExitList(iv), route = g3dHwShort(iv.name || ''), routeEn = HW_EN[route] || '', cand = [];
       exits.forEach((e, i) => {
         if (e.s < iv.s0 + 150) return;                                   // 乗ってきた入口は対象外
-        for (const dd of [2000, 1000, 500, 120]) { const s = e.s - dd; if (s > iv.s0 + 60) cand.push({ s, e, i, dd }); }
+        for (const dd of [1000, 500, 120]) { const s = e.s - dd; if (s > iv.s0 + 60) cand.push({ s, e, i, dd }); }
       });
       if (!cand.length) for (let s = iv.s0 + 350; s < iv.s1 - 200; s += 1500) cand.push({ s, e: null, i: -1, dd: 0 });
       const vis = cand.map(c => Object.assign({ d: c.s - sRef }, c)).filter(c => c.d > -G.BACK && c.d < G.L - 10).sort((a, b) => a.d - b.d).slice(0, gs.length);
@@ -4749,7 +4796,7 @@ ETC
       vis.forEach((c, j) => {
         const g = slots[j]; if (!g) return;
         g3dSamp(c.d, S); g.position.set(S[0], 0, S[1]); g.rotation.y = Math.atan2(-S[4], -S[5]); g.visible = true; g3dSignRise(g);
-        if (!G.signCard && c.d > -12 && c.d < 260 && g.userData.spec) G.signCard = { spec: g.userData.spec, key: g.userData.key };
+        if (!G.signCard && c.d > -12 && c.d < 150 && g.userData.spec) G.signCard = { spec: g.userData.spec, key: g.userData.key };
       });
       g3dSignCardUpdate();
     }
@@ -4791,7 +4838,13 @@ ETC
       const nm = st.name || '', rf = (st.ref || '').split(';')[0].trim();
       let m = nm.match(/国道\s*(\d+)/); if (m) return { type: 'nat', num: m[1] };
       m = nm.match(/(?:県道|都道|府道|道道)\s*(\d+)/); if (m) return { type: 'pref', num: m[1] };
-      if (/^\d{1,3}$/.test(rf)) return { type: 'nat', num: rf };
+      for (const r0 of String(st.ref || '').split(';')) {                 // 道路番号(ref)も見る: 「国道1号」「R1」「1」「県道12」など
+        const r = r0.trim();
+        let k = r.match(/^(?:国道|R|N|Route\s*)\s*(\d{1,3})(?:号)?$/i) || r.match(/^(\d{1,3})$/);
+        if (k) return { type: 'nat', num: k[1] };
+        k = r.match(/^(?:県道|都道|府道|道道|K|P)\s*(\d{1,4})(?:号)?$/i);
+        if (k) return { type: 'pref', num: k[1] };
+      }
       return null;
     }
     const GENI = { steps: null, route: null, list: [] };
@@ -4803,9 +4856,11 @@ ETC
       steps.forEach((st, i) => {
         const m = st.maneuver;
         if (i === 0 || !m || !m.location || m.type === 'arrive' || m.type === 'depart') return;
-        if ((!m.modifier || m.modifier === 'straight') && m.type !== 'off ramp') return;
+        const sh0 = g3dRoadShield(st), psh = i > 0 ? g3dRoadShield(steps[i - 1]) : null;
+        const numChanged = !!sh0 && (!psh || psh.type !== sh0.type || psh.num !== sh0.num);   // 直進でも、国道・県道の番号が変わる所には看板を出す
+        if ((!m.modifier || m.modifier === 'straight') && m.type !== 'off ramp' && !numChanged) return;
         const p = g3dToLocal(R, m.location[1], m.location[0]);
-        GENI.list.push({ s: g3dProject(R, p[0], p[1]).s, mod: m.modifier || 'slight left', name: st.name || '', shield: g3dRoadShield(st), type: m.type, dests: st.destinations || '' });
+        GENI.list.push({ s: g3dProject(R, p[0], p[1]).s, mod: m.modifier || (numChanged ? 'straight' : 'slight left'), name: st.name || '', shield: g3dRoadShield(st), type: m.type, dests: st.destinations || '' });
       });
       GENI.list.sort((a, b) => a.s - b.s);
       return GENI.list;
@@ -4862,7 +4917,7 @@ ETC
         ov = document.createElement('div'); ov.id = 'g3dSignCard';
         ov.style.cssText = 'position:absolute;right:20%;top:6%;width:40%;pointer-events:none;display:none;z-index:5;filter:drop-shadow(0 4px 10px rgba(0,0,0,.55))';
         const cv = document.createElement('canvas'); cv.width = 512; cv.height = 256; cv.style.cssText = 'width:100%;height:auto;display:block';
-        ov.appendChild(cv); ov.appendChild(g3dPoleEl()); host.appendChild(ov);
+        ov.appendChild(cv); host.appendChild(ov);
       }
       if (!ov) return;
       if (sc && G.cardKey !== sc.key) { G.cardKey = sc.key; g3dHwDrawSign(ov.firstChild, sc.spec); }
@@ -4884,23 +4939,36 @@ ETC
       if (geom && SIGNR.geom !== geom) { try { SIGNR.route = g3dBuildRoute(geom); SIGNR.geom = geom; } catch (e) { SIGNR.route = null; SIGNR.geom = geom; } }
       return SIGNR.route;
     }
+    // 名前の末尾に「出口」「IC」などが付いていたら外す(あとから「出口」「JCT」を付け直すので、二重にならないように)
+    function g3dHwBase(n) { return (n || '').replace(/\s*(インターチェンジ|ジャンクション|出口|入口|IC|JCT)\s*$/i, '').trim(); }
+    function g3dHwBaseEn(n) { return (n || '').replace(/\s*(Interchange|Junction|Exit|IC|JCT)\s*$/i, '').trim(); }
     function g3dHwSpecFor(iv, exits, e, dd, route, routeEn) {
-      const after = (e.dests && e.dests.length) ? e.dests : exits.filter(x => x.s > e.s && !x.fb).slice(0, 2).map(x => ({ name: x.name, en: x.en }));
+      const raw = (e.dests && e.dests.length) ? e.dests : exits.filter(x => x.s > e.s && !x.fb).map(x => ({ name: x.name, en: x.en }));
+      const seen = new Set([g3dHwBase(e.name)]), after = [];            // 同じ名前(上り・下りランプの二重登録など)は1つだけにする
+      for (const d of raw) {
+        const nm = g3dHwBase(d.name);
+        if (!nm || seen.has(nm)) continue;
+        seen.add(nm); after.push({ name: nm, en: g3dHwBaseEn(d.en) });
+        if (after.length >= 2) break;
+      }
       const dist = dd >= 1000 ? (dd / 1000) + 'km' : (dd <= 120 ? '' : dd + 'm'), jct = e.kind === 'JCT';
-      return { kind: 'exit', name: (e.name || '') + (jct ? 'JCT' : '出口'), en: e.en ? e.en + (jct ? ' JCT' : ' EXIT') : (jct ? 'JCT' : 'EXIT'), dist, dests: after, mod: e.mod, ref: iv.ref || '', route, routeEn };
+      const base = g3dHwBase(e.name), baseEn = g3dHwBaseEn(e.en);
+      return { kind: 'exit', name: base + (jct ? 'JCT' : '出口'), en: baseEn ? baseEn + (jct ? ' JCT' : ' EXIT') : (jct ? 'JCT' : 'EXIT'), dist, dests: after, mod: e.mod, ref: iv.ref || '', route, routeEn, takes: e.s > iv.s1 - 900 };
     }
     // 260m以内でいちばん近い標識 {spec, key, d}(無ければ null)
     function g3dSignAhead(sRef) {
       let iv = null, best = null;
       for (const v of g3dHwIntervals()) if (sRef > v.s0 - 300 && sRef < v.s1 + 60) { iv = v; break; }
-      const lim = iv ? 260 : 150;                                        // 高速は260m手前から、一般道は150m手前から出す
-      const take = (d, spec, key) => { if (d > -12 && d < lim && (!best || d < best.d)) best = { d, spec, key }; };
+      const lim = iv ? 150 : 100;                                        // 看板の位置の、高速は150m手前から・一般道は100m手前から出す(早すぎないように)
+      const list = [];
+      const take = (d, spec, key) => { if (d > -12 && d < lim) { list.push({ d, spec, key }); if (!best || d < best.d) best = { d, spec, key }; } };
       if (iv) {
         const exits = g3dHwExitList(iv), route = g3dHwShort(iv.name || ''), routeEn = HW_EN[route] || '';
-        exits.forEach((e, i) => { if (e.s < iv.s0 + 150) return; for (const dd of [2000, 1000, 500, 120]) { const s = e.s - dd; if (s > iv.s0 + 60) take(s - sRef, g3dHwSpecFor(iv, exits, e, dd, route, routeEn), 'h:' + i + ':' + dd); } });
+        exits.forEach((e, i) => { if (e.s < iv.s0 + 150) return; for (const dd of [1000, 500, 120]) { const s = e.s - dd; if (s > iv.s0 + 60) take(s - sRef, g3dHwSpecFor(iv, exits, e, dd, route, routeEn), 'h:' + Math.round(e.s) + ':' + dd); } });
       } else {
         for (const mv of g3dGenManeuvers()) for (const dd of [300, 100]) if (mv.s > sRef) take(mv.s - dd - sRef, g3dGenSpec(mv, dd), 'g:' + Math.round(mv.s) + ':' + dd);
       }
+      if (best) best.list = list;
       return best;
     }
     function g3dPoleEl() {                                              // 標識の右側に立つポール
@@ -4930,18 +4998,32 @@ ETC
         g3dPoleFit(el);
       } else if (el.style.display === 'block') { el.dataset.key = ''; shoCardOut(el); }
     }
+    // 看板を落ち着かせる: 出している看板が残っている間は、別の看板に切り替えない(2km手前の看板が出たら、通りすぎるまでそのまま)
+    function g3dSignSticky(ah, nowT) {
+      const SL = G3D.signLock;
+      if (ah) {
+        const same = SL && ah.list && ah.list.find(c => c.key === SL.key);
+        if (same && nowT - SL.t < 25000) ah = { d: same.d, spec: same.spec, key: same.key, list: ah.list };
+        else G3D.signLock = { key: ah.key, t: nowT };
+        G3D.signLast = { ah, t: nowT };
+      } else if (G3D.signLast && nowT - G3D.signLast.t < 1500) ah = G3D.signLast.ah;      // 位置が一瞬ぶれて消えても、ちらつかせない
+      else G3D.signLock = null;
+      G3D.signOn = !!ah;
+      return ah;
+    }
     function g3dSignTick() {
       let ah = null;
       try {
         if (typeof userPos !== 'undefined' && userPos && typeof pendingRouteGeometry !== 'undefined' && pendingRouteGeometry) {
           const R = g3dRt();
-          if (R) { const p = g3dToLocal(R, userPos.lat, userPos.lon), pr = g3dProject(R, p[0], p[1]); if (pr.d < 90) ah = g3dSignAhead(pr.s); }
+          if (R) { const p = g3dToLocal(R, userPos.lat, userPos.lon), pr = g3dProject(R, p[0], p[1]); if (pr.d < (G3D.signOn ? 160 : 90)) ah = g3dSignAhead(pr.s); }
         }
       } catch (e) { ah = null; }
+      ah = g3dSignSticky(ah, Date.now());
       // (1) 普通の全画面の地図
       try {
         const mc = document.getElementById('mapContainer');
-        g3dCardShow(g3dCardEl('mapSignCard', mc, 'position:absolute;right:22%;top:5%;width:39%;z-index:500', true), ah);
+        g3dCardShow(g3dCardEl('mapSignCard', mc, 'position:absolute;left:60%;top:54%;width:39%;z-index:500;transform:translate(-50%,-50%)', false), ah);
         const want = ah ? 1 : 0;
         if ((window.signMapShift || 0) !== want) { window.signMapShift = want; if (typeof map !== 'undefined' && map && userPos) panToUser(L.latLng(userPos.lat, userPos.lon), { animate: true, duration: 0.6 }); }
       } catch (e) { /* 無視 */ }
@@ -5453,7 +5535,7 @@ ETC
       if (waitingForDestinationName) promptMsg = "どこに設定いたしますか？";
       else if (waitingForCandidateNumber) promptMsg = "番号をおっしゃってください。";
       else if (waitingForGoOrWaypoint) promptMsg = "目的地に設定する、経由地に設定する、ここを登録する、いずれかの言葉をおっしゃってください。";
-      else if (waitingForRouteChoice) promptMsg = "ルートをお選びください。推奨、有料優先、一般優先、距離優先、エコ、パーソナルから、お好きなルートをおっしゃってください。";
+      else if (waitingForRouteChoice) promptMsg = "ルートをお選びください。推奨、有料優先、一般優先、距離優先、エコ、パーソナル、渋滞回避から、お好きなルートをおっしゃってください。";
       if ('speechSynthesis' in window) {
         const promptUtt = new SpeechSynthesisUtterance(promptMsg); promptUtt._keep = true;
         promptUtt.lang = 'ja-JP';
@@ -5871,12 +5953,12 @@ ETC
         return;
       }
       waitingForRouteChoice = true;
-      voiceAnnounce('ルートをお選びください。推奨、有料優先、一般優先、距離優先、エコ、パーソナル、または1から6の番号でお答えください。');
+      voiceAnnounce('ルートをお選びください。推奨、有料優先、一般優先、距離優先、エコ、パーソナル、渋滞回避、または1から7の番号でお答えください。');
     }
 
     // 音声で選んだルート種別(例:「推奨ルート」)を反映し、そのルートで案内を開始する
     // 「推奨」のような短い単語は聞き取りミスが起きやすいため、番号(1〜6)でも答えられるようにしてある
-    const VOICE_ROUTE_ORDER = ['recommended', 'toll', 'local', 'distance', 'eco', 'personal'];
+    const VOICE_ROUTE_ORDER = ['recommended', 'toll', 'local', 'distance', 'eco', 'personal', 'avoidjam'];
     async function handleRouteChoiceAnswer(command) {
       let matched = VOICE_ROUTE_ORDER.find(key => command.includes(ROUTE_MODES[key].label));
       if (!matched) {
@@ -5884,7 +5966,7 @@ ETC
         if (num && VOICE_ROUTE_ORDER[num - 1]) matched = VOICE_ROUTE_ORDER[num - 1];
       }
       if (!matched) {
-        voiceAnnounce('「推奨ルート」「有料優先」「一般優先」「距離優先」「エコ」「パーソナル」、または1から6の番号でお答えください。');
+        voiceAnnounce('「推奨ルート」「有料優先」「一般優先」「距離優先」「エコ」「パーソナル」「渋滞回避」、または1から7の番号でお答えください。');
         return;
       }
       waitingForRouteChoice = false;
@@ -7869,7 +7951,8 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
     const OVERPASS_URLS = [
       'https://overpass-api.de/api/interpreter',
       'https://overpass.private.coffee/api/interpreter',
-      'https://overpass.kumi.systems/api/interpreter'
+      'https://overpass.kumi.systems/api/interpreter',
+      'https://maps.mail.ru/osm/tools/overpass/api/interpreter'
     ];
     let lastOverpassError = '';   // 直近に失敗した理由(画面のエラー表示に使う)
     // Overpassに問い合わせて要素の配列を返す。どのサーバーにもつながらなければ null
@@ -9352,6 +9435,7 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
       distance:    { label: '距離優先', color: '#ef4444' },
       eco:         { label: 'エコ',     color: 'var(--ac-d,#06b6d4)' },
       personal:    { label: 'パーソナル', color: '#a855f7' },
+      avoidjam:    { label: '渋滞回避', color: '#f97316' },
       alt:         { label: '別ルート', color: '#ec4899' }
     };
     const ROUTE_MODE_STORAGE_KEY = 'shoNaviRouteMode';
@@ -9470,7 +9554,7 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
       const jamDelayS = surfaceIntersections * (peak ? 4 : 1.5) + (hwM / 1000) * (peak ? 8 : 1);
       return {
         distance: route.distance, duration: route.duration,
-        hwM, hwS, tollYen, fuelL, jamDelayS, peak,
+        hwM, hwS, tollYen, fuelL, jamDelayS, peak, ints: surfaceIntersections,
         effectiveDuration: route.duration + jamDelayS
       };
     }
@@ -9507,6 +9591,8 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
       if (t === 5) return { type: 'arrive', modifier: 'right' };
       if (t === 6) return { type: 'arrive', modifier: 'left' };
       if (t === 7) return { type: 'new name' };
+      if (t === 12) return { type: 'turn', modifier: 'uturn', uside: 'right' };
+      if (t === 13) return { type: 'turn', modifier: 'uturn', uside: 'left' };
       if (TURN[t]) return { type: 'turn', modifier: TURN[t] };
       if (t === 17) return { type: 'on ramp', modifier: 'straight' };
       if (t === 18) return { type: 'on ramp', modifier: 'right' };
@@ -9623,16 +9709,19 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
       via = via || [];
       const heading = headingForRoute(from);   // 車の向き(走っていて分かるときだけ)
       const layer = roadLayer || null;          // 'highway'=高速道路の上から / 'local'=下道から 出発する
-      const [std, local, highway, shortest] = await Promise.all([
+      const [std, local, highway, shortest, live] = await Promise.all([
         valhallaRequest(from, to, {}, { alternates: via.length ? 0 : 2, heading, layer, via }),
         valhallaRequest(from, to, { use_highways: 0, use_tolls: 0 }, { heading, layer, via }),
         valhallaRequest(from, to, { use_highways: 1, use_tolls: 1 }, { heading, layer, via }),
-        valhallaRequest(from, to, { shortest: true }, { heading, layer, via })
+        valhallaRequest(from, to, { shortest: true }, { heading, layer, via }),
+        (isNavigating && currentRouteMode !== 'avoidjam') ? Promise.resolve([]) : mapboxTrafficRoutes(from, to, via)     // いまの渋滞込みのルート(トークンがあるときだけ。「渋滞回避」で使う。走行中の再探索では、渋滞回避モード以外は取らない)
       ]);
       const routes = [].concat(std, local, highway, shortest);
       if (!routes.length) {
         routeSource = 'osrm';
-        return searchRouteCandidatesOsrm(from, to, via);
+        const osrmCands = await searchRouteCandidatesOsrm(from, to, via);
+        addLiveCandidates(osrmCands, live);
+        return osrmCands;
       }
       routeSource = 'valhalla';
       const seen = new Set();
@@ -9663,15 +9752,111 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
         seen.add(key);
         cands.push({ route, a: analyzeRoute(route) });
       });
+      addLiveCandidates(cands, live);
       return cands;
     }
 
     // どの種別にも選ばれなかった候補のうち、いちばん速いもの(=「別ルート」)。無ければnull
     function altCandidate(cands) {
       if (!cands.length) return null;
-      const used = new Set(['recommended', 'toll', 'local', 'distance', 'eco', 'personal'].map(m => pickRouteForMode(cands, m).cand));
+      const used = new Set(['recommended', 'toll', 'local', 'distance', 'eco', 'personal', 'avoidjam'].map(m => pickRouteForMode(cands, m).cand));
       const left = cands.filter(c => !used.has(c));
       return left.length ? left.reduce((b, c) => c.a.duration < b.a.duration ? c : b) : null;
+    }
+
+    /* ---- 渋滞回避: Mapboxの「いまの渋滞込み」のルート(driving-traffic)を候補に足す ----
+       Mapboxは出発・到着+経由地1つまで。トークンが無い/通信できないときは足さない(渋滞回避は見込みで選ぶ) */
+    async function mapboxTrafficRoutes(from, to, via) {
+      try {
+        const tk = (typeof mbtToken === 'function') ? mbtToken() : '';
+        if (!tk || (via && via.length > 1)) return [];
+        const pts = [from].concat(via || [], [to]);
+        const url = 'https://api.mapbox.com/directions/v5/mapbox/driving-traffic/' + pts.map(p => p.lon.toFixed(4) + ',' + p.lat.toFixed(4)).join(';')
+          + '?alternatives=' + ((via && via.length) ? 'false' : 'true') + '&steps=true&geometries=geojson&overview=full&access_token=' + encodeURIComponent(tk);
+        const r = await mbxGet(url, 180000);       // 同じ場所からの探し直しは3分覚えておく
+        if (!r || r.status !== 200 || !r.data) return [];
+        return (r.data.routes || []).filter(x => x && x.geometry && x.legs).map(x => { x._live = { dur: x.duration, typ: x.duration_typical || null }; return x; });
+      } catch (e) { console.warn('Mapbox traffic route failed', e); return []; }
+    }
+    // 渋滞込みのルートを候補に足す。今ある候補とほぼ同じ道なら、その候補に「いまの渋滞込みの時間」を書き足す(重複させない)
+    function addLiveCandidates(cands, liveRoutes) {
+      (liveRoutes || []).forEach(route => {
+        const dur = route._live.dur, typ = route._live.typ;
+        const delay = typ ? Math.max(0, dur - typ) : 0;
+        const same = cands.find(c => !c.a.live && Math.abs(c.a.distance - route.distance) / Math.max(1, route.distance) < 0.015);
+        if (same) {
+          same.a.live = true; same.a.jamDelayS = delay; same.a.effectiveDuration = dur; same.a.duration = dur; same.route.duration = dur;
+        } else {
+          const a = analyzeRoute(route);
+          a.live = true; a.jamDelayS = delay; a.effectiveDuration = dur;
+          cands.push({ route, a });
+        }
+      });
+    }
+
+    /* ---- パーソナルルート: 「どんなルートがいいか」の好みの設定 ---- */
+    const PERSONAL_PREF_KEY = 'shoNaviPersonalPref';
+    function loadPersonalPref() {
+      try { const v = JSON.parse(localStorage.getItem(PERSONAL_PREF_KEY) || 'null'); return (v && typeof v === 'object') ? v : null; } catch (e) { return null; }
+    }
+    // 候補ごとの点数(低いほど好み)。いちばん小さい候補を1として「何倍か」で比べるので、単位がちがっても混ぜられる
+    function personalScore(c, cands, p, ready) {
+      const a = c.a;
+      const rel = (v, key, off) => (v + off) / (Math.min(...cands.map(x => x.a[key] || 0)) + off);
+      let sc = rel(a.effectiveDuration, 'effectiveDuration', 60);                       // 早さは、いつも少しは見る
+      const share = a.distance ? a.hwM / a.distance : 0;
+      if (p.goal === 'time') sc += 2 * rel(a.effectiveDuration, 'effectiveDuration', 60);
+      else if (p.goal === 'cheap') sc += 3 * rel(a.tollYen, 'tollYen', 300);
+      else if (p.goal === 'short') sc += 3 * rel(a.distance, 'distance', 1000);
+      else if (p.goal === 'eco') sc += 3 * rel(a.fuelL, 'fuelL', 0.3);
+      if (p.hw === 'use') sc += 2 * (1 - share); else if (p.hw === 'avoid') sc += 2 * share;
+      if (p.jam) sc += (p.jam === 2 ? 4 : 1.5) * rel(a.jamDelayS, 'jamDelayS', 120);
+      if (p.simple) sc += 1.5 * rel(a.ints || 0, 'ints', 10);
+      if (p.familiar && ready && window.SHOLOG && SHOLOG.fam) sc += 3 * (1 - SHOLOG.fam(c));
+      return sc;
+    }
+    function personalNote(p, ready) {
+      const G = { time: '早さ重視', cheap: '料金を安く', short: '近さ重視', eco: '燃費重視' };
+      const parts = [G[p.goal] || '早さ重視'];
+      if (p.hw === 'use') parts.push('高速をよく使う'); else if (p.hw === 'avoid') parts.push('高速は避ける');
+      if (p.jam === 1) parts.push('渋滞は避けたい'); else if (p.jam === 2) parts.push('渋滞は絶対避けたい');
+      if (p.simple) parts.push('右左折少なめ');
+      if (p.familiar) parts.push(ready ? '慣れた道' : '慣れた道(走行ログがたまると効きます)');
+      return `あなたの好み(${parts.join('・')})に合わせたルートです`;
+    }
+    function c_noteLive(c) { const m = Math.round((c.a.jamDelayS || 0) / 60); return m >= 1 ? `いまの渋滞情報(Mapbox)で、いちばん早く着くルートです(渋滞の遅れ 約${m}分)` : 'いまの渋滞情報(Mapbox)で、いちばん早く着くルートです(ほぼ渋滞なし)'; }
+    function personalPrefButtonHtml() {
+      return `<button onclick="openPersonalPrefs()" class="w-full text-left rounded-lg border border-purple-500/50 bg-slate-900 hover:bg-slate-800 active:scale-[0.98] transition px-2 py-1.5 text-[11px] font-bold text-purple-300">⚙ パーソナルの好みを設定${loadPersonalPref() ? '(設定ずみ)' : ''}</button>`;
+    }
+    function openPersonalPrefs() {
+      const cur = Object.assign({ goal: 'time', hw: 'any', jam: 1, familiar: false, simple: false }, loadPersonalPref() || {});
+      const box = document.createElement('div');
+      box.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center';
+      const radio = (title, name, opts) => `<div style="margin-top:10px"><div style="font-size:12px;font-weight:800;color:#cbd5e1;margin-bottom:4px">${title}</div><div style="display:flex;flex-wrap:wrap;gap:6px">`
+        + opts.map(o => `<label><input type="radio" name="${name}" value="${o[0]}" ${String(cur[name]) === String(o[0]) ? 'checked' : ''} style="display:none"><span class="pp-chip">${o[1]}</span></label>`).join('') + '</div></div>';
+      const check = (name, label) => `<label><input type="checkbox" name="${name}" ${cur[name] ? 'checked' : ''} style="display:none"><span class="pp-chip">${label}</span></label>`;
+      box.innerHTML = '<style>.pp-chip{display:inline-block;padding:6px 11px;border-radius:999px;border:1px solid #475569;color:#cbd5e1;font-size:12px;font-weight:700}input:checked+.pp-chip{background:#7c3aed;border-color:#a78bfa;color:#fff}</style>'
+        + '<div style="background:#0f172a;border:1px solid #475569;border-radius:14px;padding:16px;width:min(94vw,520px);max-height:90vh;overflow:auto;color:#e2e8f0;font-family:inherit">'
+        + '<div style="font-weight:800;font-size:15px">パーソナルルートの好み</div>'
+        + '<div style="font-size:11px;color:#94a3b8;margin-top:2px">どんなルートがええか選んでな。このスマホの中だけに保存されるで。</div>'
+        + radio('いちばん大事にしたいこと', 'goal', [['time', '早く着く'], ['cheap', '料金を安く'], ['short', '近道(距離)'], ['eco', '燃費']])
+        + radio('高速道路', 'hw', [['use', 'よく使う'], ['any', 'どっちでも'], ['avoid', 'なるべく避ける']])
+        + radio('渋滞', 'jam', [['0', '気にしない'], ['1', '避けたい'], ['2', '絶対に避けたい']])
+        + '<div style="margin-top:10px"><div style="font-size:12px;font-weight:800;color:#cbd5e1;margin-bottom:4px">そのほか</div><div style="display:flex;flex-wrap:wrap;gap:6px">'
+        + check('simple', '右左折・交差点が少ない道') + check('familiar', 'いつも走る慣れた道(走行ログがたまったら)') + '</div></div>'
+        + '<div style="display:flex;gap:8px;margin-top:14px;justify-content:flex-end"><button id="ppReset" style="padding:8px 12px;border-radius:8px;border:1px solid #475569;color:#94a3b8">設定を消す</button>'
+        + '<button id="ppCancel" style="padding:8px 14px;border-radius:8px;border:1px solid #475569;color:#cbd5e1">やめる</button>'
+        + '<button id="ppSave" style="padding:8px 14px;border-radius:8px;background:#7c3aed;color:#fff;font-weight:800">保存</button></div></div>';
+      document.body.appendChild(box);
+      const done = () => { box.remove(); renderRouteModeUI(); if (currentRouteMode === 'personal' && routeCandidates.length) selectRouteMode('personal'); };
+      box.querySelector('#ppCancel').onclick = () => box.remove();
+      box.querySelector('#ppReset').onclick = () => { try { localStorage.removeItem(PERSONAL_PREF_KEY); } catch (e) {} done(); };
+      box.querySelector('#ppSave').onclick = () => {
+        const val = n => { const e = box.querySelector(`input[name=${n}]:checked`); return e ? e.value : null; };
+        const pref = { goal: val('goal') || 'time', hw: val('hw') || 'any', jam: parseInt(val('jam') || '1', 10), simple: box.querySelector('input[name=simple]').checked, familiar: box.querySelector('input[name=familiar]').checked };
+        try { localStorage.setItem(PERSONAL_PREF_KEY, JSON.stringify(pref)); } catch (e) {}
+        done();
+      };
     }
 
     // 候補の中から、種別に合うルートを1本選ぶ。同点のときは所要時間が短いほうを優先
@@ -9707,12 +9892,30 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
           cand = best(cands, c => c.a.fuelL);
           break;
         case 'personal': {
-          if (!window.SHOLOG || !SHOLOG.ready()) {
+          const pref = loadPersonalPref();
+          const ready = !!(window.SHOLOG && SHOLOG.ready());
+          if (pref) {                       // 好みを設定してあれば、その好みで選ぶ
+            cand = best(cands, c => personalScore(c, cands, pref, ready));
+            note = personalNote(pref, ready);
+            break;
+          }
+          if (!ready) {
             const r = pickRouteForMode(cands, 'recommended');
-            return { cand: r.cand, note: '走行ログがまだ少ないため、推奨ルートを表示しています(走るほど学習します)' };
+            return { cand: r.cand, note: '好みが未設定で走行ログも少ないため、推奨ルートを表示しています(「パーソナルの好みを設定」で選べます)' };
           }
           cand = best(cands, c => SHOLOG.score(c));
           note = 'あなたの走行ログ(よく通る道・高速の使い方)に合わせたルートです';
+          break;
+        }
+        case 'avoidjam': {
+          const lives = cands.filter(c => c.a.live);
+          if (lives.length) {               // Mapboxの「いまの渋滞込み」の時間がある候補から、いちばん早く着く道
+            cand = best(lives, c => c.a.effectiveDuration);
+            note = c_noteLive(cand);
+          } else {                          // 渋滞情報が取れないときは、渋滞の見込み(概算)が小さい道
+            cand = best(cands, c => c.a.duration + c.a.jamDelayS * 3);
+            note = '渋滞情報(Mapboxのトークン)が使えないため、渋滞の見込み(概算)で選んでいます';
+          }
           break;
         }
         case 'alt': {
@@ -9827,7 +10030,46 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
         if (li < legs.length - 1 && t === 'arrive') return;
         out.push(st);
       }));
+      try { refineStepModifiers(out); } catch (e) { console.warn('曲がり方の判定に失敗', e); }
       return out;
+    }
+    // ルート検索元の「左/右」の判定はおおざっぱなので、実際の道の曲がり角度(手前の道と先の道の向きの差)で判定し直す。
+    // 〜12度=直進 / 〜55度=斜め / 〜120度=左右 / 〜160度=大きく / それ以上=Uターン(右Uターンか左Uターンかも向きで決める)
+    function refineStepModifiers(steps) {
+      const R = Math.PI / 180;
+      const dist = (a, b) => 6371000 * Math.hypot((b[0] - a[0]) * R * Math.cos(a[1] * R), (b[1] - a[1]) * R);
+      const brg = (a, b) => {
+        const y = Math.sin((b[0] - a[0]) * R) * Math.cos(b[1] * R);
+        const x = Math.cos(a[1] * R) * Math.sin(b[1] * R) - Math.sin(a[1] * R) * Math.cos(b[1] * R) * Math.cos((b[0] - a[0]) * R);
+        return (Math.atan2(y, x) / R + 360) % 360;
+      };
+      const SKIP = { depart: 1, arrive: 1, roundabout: 1, rotary: 1, 'exit roundabout': 1, 'exit rotary': 1, 'roundabout turn': 1 };
+      for (let j = 1; j < steps.length; j++) {
+        const m = steps[j].maneuver;
+        if (!m || m._r || SKIP[m.type]) continue;
+        m._r = 1;
+        if (m.modifier === 'straight' && (m.type === 'continue' || m.type === 'new name')) continue;   // もともと直進の「道の名前が変わるだけ」は触らない
+        const pc = steps[j - 1].geometry && steps[j - 1].geometry.coordinates;
+        const nc = steps[j].geometry && steps[j].geometry.coordinates;
+        let d = null;
+        if (pc && pc.length > 1 && nc && nc.length > 1) {
+          const e = pc[pc.length - 1];
+          let a = pc.length - 2; while (a > 0 && dist(pc[a], e) < 30) a--;
+          const s0 = nc[0];
+          let b = 1; while (b < nc.length - 1 && dist(s0, nc[b]) < 30) b++;
+          if (dist(pc[a], e) >= 2 && dist(s0, nc[b]) >= 2) d = brg(s0, nc[b]) - brg(pc[a], e);
+        }
+        if (d === null && typeof m.bearing_before === 'number' && typeof m.bearing_after === 'number') d = m.bearing_after - m.bearing_before;
+        if (d === null) continue;
+        d = ((d + 540) % 360) - 180;        // -180〜180(プラス=右)
+        const side = d > 0 ? 'right' : 'left', ad = Math.abs(d);
+        if (ad < 12) m.modifier = 'straight';
+        else if (ad < 55) m.modifier = 'slight ' + side;
+        else if (ad < 120) m.modifier = side;
+        else if (ad < 160) m.modifier = 'sharp ' + side;
+        else { m.modifier = 'uturn'; m.uside = side; }
+        if (m.modifier !== 'uturn') delete m.uside;
+      }
     }
 
     // 従来の呼び出し口。現在の種別で選んだ1本を返す(候補は routeCandidates に保存される)
@@ -9955,7 +10197,7 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
                 <span class="block text-[9px] text-slate-400 truncate">${sub}</span>
               </span>
             </button>`;
-          }).join('');
+          }).join('') + personalPrefButtonHtml();
         }
       }
       const info = document.getElementById('routeModeInfo');
@@ -9966,7 +10208,7 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
         `高速 ${(a.hwM / 1000).toFixed(1)}km`,
         `料金 約${a.tollYen.toLocaleString()}円`,
         `燃料 約${a.fuelL.toFixed(1)}L`,
-        `渋滞見込み +${Math.round(a.jamDelayS / 60)}分`
+        `${a.live ? '渋滞(いま) ' : '渋滞見込み '}+${Math.round(a.jamDelayS / 60)}分`
       ];
       info.innerHTML = parts.join(' / ')
         + `<br><span class="text-slate-500">候補${routeCandidates.length}本から選択(概算) / 検索: ${routeSource === 'valhalla' ? 'Valhalla' : 'OSRM(予備)'}</span>`
@@ -9999,9 +10241,31 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
     const hwGuide = {
       active: false, model: null, facilities: [], loaded: false, fetchError: false, congested: [],
       traveled: 0, token: 0, autoOpened: false, dismissed: false, manual: false,
-      spoken: new Set(), simulated: false
+      spoken: new Set(), simulated: false, progress: null
     };
     let hwLastRender = 0;
+    // 12kmずつ解析している進み具合(右側パネルの表示用)
+    // 1区間(約12km)取れた瞬間に、右側へ出す。パネルが開いていなければ、高速を走っているときは自動で開く
+    function hwShowNow() {
+      if (!hwGuide.active || !hwGuide.model) return;
+      if (currentSideMode !== 'highway' && currentHighwayRange(hwGuide.traveled) && !hwGuide.autoOpened && !hwGuide.dismissed && !hwGuide.manual
+          && currentSideMode !== 'routes' && currentSideMode !== 'turn' && !isMinimalMode) {
+        document.getElementById('sidePanel').classList.remove('hidden');
+        toggleSidePanel('highway');
+        hwGuide.autoOpened = true;
+      }
+      if (currentSideMode === 'highway') { hwLastRender = Date.now(); renderHighwayPanel(); }
+    }
+    function hwProgText() {
+      const p = hwGuide.progress;
+      if (!(p && p.total)) return '';
+      let t = p.wait ? `(先100kmぶんは取れたで。走ると続きを取るで ${Math.min(p.done, p.total)}/${p.total})` : `(約12kmずつ解析 ${Math.min(p.done, p.total)}/${p.total})`;
+      if (p.done === 0) {
+        if (window.__hwLastErr) t += /429|混雑/.test(window.__hwLastErr) ? ' サーバーが混んでるから、少し待ってやり直し中…' : ' 通信エラー';
+        t += hwDiagText();
+      }
+      return t;
+    }
 
     function fmtDistShort(m) {
       if (m < 1000) return `${Math.max(10, Math.round(m / 10) * 10)}m`;
@@ -10058,34 +10322,120 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
 
     // 高速施設検索用: 混雑・一時エラー時は既存のOverpass予備サーバーへ順番に切り替える。
     // null は全サーバー失敗、配列は取得成功(0件を含む)を表す。
-    async function overpassFetchElements(query, timeoutMs) {
-      const endpoints = (typeof OVERPASS_URLS !== 'undefined' && OVERPASS_URLS.length)
-        ? OVERPASS_URLS
-        : ['https://overpass-api.de/api/interpreter'];
-      const errors = [];
-      for (const endpoint of endpoints) {
-        const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), timeoutMs || 15000);
+    const __ovpCool = {};   // サーバーごとの「この時刻までは休ませる」(429=混みすぎ のとき)
+    // 取れた施設(区間ごと)をスマホに14日間おぼえておく。同じ道をまた走るときは、サーバーに聞かずにすぐ出せる
+    const HW_CACHE_KEY = 'shoHwFacCache';
+    function hwHash(str) { let h = 5381; for (let i = 0; i < str.length; i++) h = (((h << 5) + h) + str.charCodeAt(i)) | 0; return h + ':' + str.length; }
+    function hwCacheGet(q) {
+      try { const e = JSON.parse(localStorage.getItem(HW_CACHE_KEY) || '{}')[hwHash(q)]; return (e && Array.isArray(e.els) && Date.now() - e.t < 14 * 86400000) ? e.els : null; } catch (e) { return null; }
+    }
+    function hwCachePut(q, els) {
+      try {
+        const o = JSON.parse(localStorage.getItem(HW_CACHE_KEY) || '{}');
+        o[hwHash(q)] = { t: Date.now(), els };
+        let ks = Object.keys(o).sort((a, b) => o[b].t - o[a].t);
+        ks.slice(100).forEach(k => delete o[k]);
+        let txt = JSON.stringify(o);
+        while (txt.length > 900000 && ks.length > 1) { delete o[ks.pop()]; txt = JSON.stringify(o); }
+        localStorage.setItem(HW_CACHE_KEY, txt);
+      } catch (e) { /* 保存できなくても動く */ }
+    }
+    // 高速の施設検索用のサーバー順。3Dの道の読み込み(overpass-api.de を主に使う)と取り合いにならないよう、日本に近いサーバーなどを先にする
+    const HW_OVP = [
+      'https://overpass.osm.jp/api/interpreter',
+      'https://overpass.kumi.systems/api/interpreter',
+      'https://overpass.openstreetmap.fr/api/interpreter',
+      'https://overpass-api.de/api/interpreter',
+      'https://lz4.overpass-api.de/api/interpreter',
+      'https://z.overpass-api.de/api/interpreter',
+      'https://overpass.private.coffee/api/interpreter',
+      'https://maps.mail.ru/osm/tools/overpass/api/interpreter'
+    ];
+    // 診断: ごく小さい問い合わせを各サーバーに投げて、「つながるか・何秒で返るか・なぜだめか」を調べる(1分に1回まで)
+    // → 重い問い合わせだけが失敗するのか、そもそもサーバーにつながらないのかが分かる。結果は右側に出して、取得の順番にも使う
+    async function hwDiagnose() {
+      if (window.__hwDiagBusy || Date.now() - (window.__hwDiagAt || 0) < 60000) return;
+      window.__hwDiagBusy = true; window.__hwDiagAt = Date.now();
+      const res = {};
+      await Promise.all(HW_OVP.map(async ep => {
+        const host = ep.split('/')[2], t0 = Date.now(), ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 8000);
         try {
-          const res = await fetch(endpoint, {
+          const r = await fetch(ep, { __bypass: true, method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'data=' + encodeURIComponent('[out:json][timeout:5];node(35.6812,139.7671,35.6813,139.7672);out 1;'), signal: ctl.signal });
+          res[host] = r.ok ? { ok: true, ms: Date.now() - t0 } : { ok: false, why: 'HTTP ' + r.status };
+        } catch (e) { res[host] = { ok: false, why: (e && e.name === 'AbortError') ? '時間切れ' : '接続できない' }; }
+        finally { clearTimeout(to); }
+      }));
+      window.__hwDiag = res; window.__hwDiagBusy = false;
+      try { if (currentSideMode === 'highway') renderHighwayPanel(); } catch (e) { /* 無視 */ }
+    }
+    function hwDiagText() {
+      const d = window.__hwDiag;
+      if (!d) return '';
+      const SHORT = { 'overpass.osm.jp': 'osm.jp', 'overpass.kumi.systems': 'kumi', 'overpass.openstreetmap.fr': 'fr', 'overpass-api.de': 'de', 'lz4.overpass-api.de': 'lz4', 'z.overpass-api.de': 'z', 'overpass.private.coffee': 'coffee', 'maps.mail.ru': 'mail.ru' };
+      return ' 診断: ' + Object.keys(d).map(h => (SHORT[h] || h) + (d[h].ok ? '○' + (d[h].ms / 1000).toFixed(1) + '秒' : '×' + d[h].why)).join(' / ') + (navigator.onLine === false ? ' / 端末がオフライン' : '') + (window.__ovpGateInfo ? (() => { const g = window.__ovpGateInfo(); return ' / 順番待ち' + g.waiting + '件・実行中' + g.active + '件'; })() : '');
+    }
+    const HW_HEDGE_MS = 4000;   // 4秒たっても返事がなければ、待ちながら次のサーバーにも同じ問い合わせをする(先に返ってきた方を使う)
+    function overpassFetchElements(query, timeoutMs) {
+      const diag = window.__hwDiag || {};
+      const score = ep => { const d = diag[ep.split('/')[2]]; return d ? (d.ok ? d.ms : 60000) : 5000; };   // 診断で速かった順 → まだ分からない → だめだったもの
+      const endpoints = HW_OVP.slice().sort((a, b) => score(a) - score(b));
+      const errors = [];
+      return new Promise(resolve => {
+        let finished = false, started = 0, pending = 0;
+        const ctrls = [];
+        const finish = val => {
+          if (finished) return;
+          finished = true;
+          ctrls.forEach(c => { try { c.abort(); } catch (e) { /* 無視 */ } });
+          if (val === null) window.__hwLastErr = errors.join(' / ');
+          resolve(val);
+        };
+        const startNext = () => {
+          if (finished) return;
+          while (started < endpoints.length) {
+            const endpoint = endpoints[started++];
+            const host = endpoint.split('/')[2];
+            if ((__ovpCool[host] || 0) > Date.now()) { errors.push(host + ': 混雑中(429)'); continue; }
+            launch(endpoint, host);
+            return;
+          }
+          if (pending === 0) finish(null);     // もう試すサーバーが無くて、待ってる問い合わせも無い
+        };
+        const launch = (endpoint, host) => {
+          pending++;
+          const ctrl = new AbortController();
+          ctrls.push(ctrl);
+          const timer = setTimeout(() => ctrl.abort(), timeoutMs || 15000);
+          const hedge = setTimeout(() => { if (pending < 2) startNext(); }, HW_HEDGE_MS);     // 同時に聞くのは最大2つまで
+          fetch(endpoint, {
+            __hw: true,
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: 'data=' + encodeURIComponent(query),
             signal: ctrl.signal
+          }).then(res => {
+            if (!res.ok) {
+              if (res.status === 429 || res.status === 502 || res.status === 503 || res.status === 504) {
+                const ra = parseInt(res.headers.get('Retry-After') || '', 10);
+                __ovpCool[host] = Date.now() + (ra > 0 ? Math.min(ra, 20) : 10) * 1000;
+              }
+              throw new Error('HTTP ' + res.status);
+            }
+            return res.json();
+          }).then(data => {
+            if (!data || !Array.isArray(data.elements)) throw new Error('応答データ形式が不正');
+            finish(data.elements);
+          }).catch(e => {
+            if (!finished) errors.push(host + ': ' + ((e && e.name === 'AbortError') ? 'timeout' : ((e && e.message) || '通信失敗')));
+          }).finally(() => {
+            clearTimeout(timer); clearTimeout(hedge);
+            pending--;
+            if (!finished) startNext();       // 失敗したら、すぐ次のサーバーへ
           });
-          if (!res.ok) throw new Error('HTTP ' + res.status);
-          const data = await res.json();
-          if (!data || !Array.isArray(data.elements)) throw new Error('応答データ形式が不正');
-          return data.elements;
-        } catch (e) {
-          errors.push(endpoint + ': ' + ((e && e.name === 'AbortError') ? 'timeout' : ((e && e.message) || '通信失敗')));
-          console.warn('Highway Overpass endpoint failed:', endpoint, e);
-        } finally {
-          clearTimeout(timer);
-        }
-      }
-      console.error('All highway Overpass endpoints failed:', errors.join(' / '));
-      return null;
+        };
+        startNext();
+      });
     }
 
     function classifyFacility(e) {
@@ -10128,7 +10478,8 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
 
     // ルートの高速区間を細かくたどり、IC/JCT/SA/PAを順番に取得する。
     // OSMに登録されている施設が対象。未登録施設まで保証するものではない。
-    async function fetchHighwayFacilities(model) {
+    async function fetchHighwayFacilities(model, onPartial, opts) {
+      opts = opts || {};
       if (!model.pts || model.pts.length < 2 || !model.ranges.length) return { items: [], failed: false };
 
       const rad = Math.PI / 180, earth = 6371000;
@@ -10158,6 +10509,15 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
         }
       });
       if (samples.length < 2) return { items: [], failed: false };
+      // ルートの点が細かいと区間が何百にも増えて進まないので、約700mおきに間引く(1区間=約16点=約12km)
+      {
+        const thin = [samples[0]];
+        for (let i = 1; i < samples.length; i++) {
+          const last = thin[thin.length - 1];
+          if (samples[i].m - last.m >= 700 || i === samples.length - 1) thin.push(samples[i]);
+        }
+        samples.length = 0; thin.forEach(p => samples.push(p));
+      }
 
       // 1クエリあたり約12km分。境界は2点重ねて施設の取りこぼしを抑える。
       const chunks = [];
@@ -10167,21 +10527,14 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
       }
       const queries = chunks.map(points => {
         const around = points.map(p => `${p.lat.toFixed(5)},${p.lon.toFixed(5)}`).join(',');
-        return `[out:json][timeout:20];(nwr["highway"~"^(motorway_junction|services|rest_area)$"](around:1100,${around}););out center tags;`;
+        // 「highway=A|B|C」のような正規表現の探し方は、全国の道を総ざらいして重くなりタイムアウトしやすい。
+        // 「highway=ちょうどこれ」の探し方なら、索引で一気に絞れるので速い。種類ごとに分けて探す。
+        return `[out:json][timeout:25];(node["highway"="motorway_junction"](around:1100,${around});nwr["highway"="services"](around:1100,${around});nwr["highway"="rest_area"](around:1100,${around}););out center tags;`;
       });
 
       const allElements = [];
-      let failedChunks = 0, cursor = 0;
-      async function worker() {
-        while (cursor < queries.length) {
-          const index = cursor++;
-          const result = await overpassFetchElements(queries[index], 5500);
-          if (result === null) failedChunks++;
-          else allElements.push(...result);
-        }
-      }
-      await Promise.all([worker(), worker()]);
-
+      let failedChunks = 0;
+      function buildItems() {
       const unique = new Map();
       allElements.forEach(e => unique.set(`${e.type || ''}:${e.id || JSON.stringify(e)}`, e));
       const best = new Map();
@@ -10201,8 +10554,80 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
           best.set(key, { kind: f.kind, name: f.name, m: near.m, dist: near.d, lat, lon, en: f.en, ref: f.ref });
         }
       });
+      return Array.from(best.values()).sort((a, b) => a.m - b.m);
+      }
+      // 手前の区間から順に、約12kmずつ。1区間取れたらすぐ表示用に渡して、止まらずそのまま次の12kmへ進む
+      // (以前は「走った位置が次の区間の3km手前まで来るまで待つ」ため、最初の12kmで止まって見えていた)
+      const pause = ms => new Promise(r => setTimeout(r, ms));
+      const isAborted = () => !!(opts.aborted && opts.aborted());
+      async function fetchChunk(index) {
+        for (let attempt = 0; attempt < 6; attempt++) {
+          if (isAborted()) return 'abort';
+          const hit = hwCacheGet(queries[index]);
+          if (hit) { allElements.push(...hit); return 'ok'; }
+          const result = await overpassFetchElements(queries[index], 20000);
+          if (result !== null) { allElements.push(...result); hwCachePut(queries[index], result); return 'ok'; }
+          hwDiagnose();       // 失敗したら、どのサーバーがなぜだめか調べる
+          await pause([4000, 8000, 15000, 25000, 30000][attempt] || 30000);        // 429(混みすぎ)のときは、サーバーが落ち着くまでしっかり待つ
+        }
+        return 'fail';
+      }
+      const tr0 = opts.getTraveled ? (opts.getTraveled() || 0) : 0;
+      const order = [];
+      for (let i = 0; i < chunks.length; i++) {
+        const part = chunks[i];
+        if (part[part.length - 1].m < tr0 - 1500) continue;      // もう通りすぎた区間は取らない
+        order.push(i);
+      }
+      const exitSet = new Set();
+      {   // 出口(各高速区間の終わり)の名前を早く出すため、最初の区間のあとは、出口をふくむ区間を先に取る
+        const first = order.length ? order[0] : null, pri = [];
+        model.ranges.slice(0, 3).forEach(r => {
+          const idx = chunks.findIndex(part => part[part.length - 1].m >= r.m1 - 100 && part[0].m <= r.m1 + 100);
+          if (idx >= 0 && idx !== first && order.includes(idx) && !pri.includes(idx)) { pri.push(idx); exitSet.add(idx); }
+        });
+        if (pri.length) {
+          const rest = order.filter(i => i !== first && !pri.includes(i));
+          order.length = 0;
+          if (first !== null) order.push(first);
+          pri.forEach(i => order.push(i));
+          rest.forEach(i => order.push(i));
+        }
+      }
+      let doneCount = 0;
+      const failedIdx = [];
+      const reportProgress = w => { if (opts.onProgress) { try { opts.onProgress(doneCount, order.length, !!w); } catch (_e) {} } };
+      window.__hwPri = true; window.__hwPriAt = Date.now();     // 解析中は、3Dの道の先読みをお休みしてもらう
+      reportProgress();
+      for (const index of order) {
+        if (isAborted()) break;
+        // 公開サーバーに負担をかけないよう、いまの位置から opts.lookAhead(m)より先の区間は、走ってきてから取る(出口の区間だけは先に取る)
+        if (opts.lookAhead && opts.getTraveled && !exitSet.has(index)) {
+          let waited = false;
+          while (!isAborted() && chunks[index][0].m > (opts.getTraveled() || 0) + opts.lookAhead) {
+            if (!waited) { waited = true; window.__hwPri = false; reportProgress(true); }     // 待ってる間は、3Dの道の先読みを再開してよい
+            await pause(2000);
+          }
+          if (waited) { window.__hwPri = true; window.__hwPriAt = Date.now(); reportProgress(false); }
+          if (isAborted()) break;
+        }
+        const r = await fetchChunk(index);
+        if (r === 'abort') break;
+        doneCount++;
+        reportProgress();
+        if (r === 'ok') { if (onPartial) { try { onPartial(buildItems()); } catch (_e) {} } }
+        else { failedChunks++; failedIdx.push(index); }
+        await pause(1500);      // 続けて問い合わせすぎると断られるので、区間のあいだは少しあける
+      }
+      // 取れなかった区間は、最後にもう一度だけ試す
+      for (const index of failedIdx) {
+        if (isAborted()) break;
+        const r = await fetchChunk(index);
+        if (r === 'ok') { failedChunks--; if (onPartial) { try { onPartial(buildItems()); } catch (_e) {} } }
+      }
+      window.__hwPri = false;
       return {
-        items: Array.from(best.values()).sort((a, b) => a.m - b.m),
+        items: buildItems(),
         failed: failedChunks > 0 && allElements.length === 0
       };
     }
@@ -10226,13 +10651,29 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
       hwGuide.facilities = [];
       hwGuide.loaded = false;
       hwGuide.fetchError = false;
+      hwGuide.progress = null;
+      window.__hwLastErr = '';
       hwGuide.traveled = 0;
-      hwGuide.congested = (isDemo && SIMULATE_JAM_IN_DEMO) ? simulateJamRanges(model) : [];
-      hwGuide.simulated = !!(isDemo && SIMULATE_JAM_IN_DEMO);
+      // デモ走行でも、Mapboxのトークンがあれば本物の渋滞を使う(無いときだけ模擬の渋滞)
+      const useSim = !!(isDemo && SIMULATE_JAM_IN_DEMO && !(typeof mbtToken === 'function' && mbtToken()));
+      hwGuide.congested = useSim ? simulateJamRanges(model) : [];
+      hwGuide.simulated = useSim;
       hwGuide.spoken = new Set();
       Object.assign(hwGuide, keep);
       const token = ++hwGuide.token;
-      fetchHighwayFacilities(model).then(result => {
+      clearInterval(hwGuide.jamTimer);
+      if (!useSim) {      // 混んでる所を取る(3分ごとに更新)
+        hwLoadCongestion(token);
+        hwGuide.jamTimer = setInterval(() => {
+          if (hwGuide.token !== token || !hwGuide.active) { clearInterval(hwGuide.jamTimer); return; }
+          hwLoadCongestion(token);
+        }, 180000);
+      }
+      fetchHighwayFacilities(model, items => {
+        if (hwGuide.token !== token) return;
+        hwGuide.facilities = items;
+        hwShowNow();
+      }, { lookAhead: 100000, getTraveled: () => hwGuide.traveled, aborted: () => hwGuide.token !== token, onProgress: (d, t, w) => { if (hwGuide.token === token) hwGuide.progress = { done: d, total: t, wait: !!w }; } }).then(result => {
         if (hwGuide.token !== token) return;
         hwGuide.facilities = result.items || [];
         hwGuide.fetchError = !!result.failed;
@@ -10254,6 +10695,7 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
       hwGuide.model = null;
       hwGuide.facilities = [];
       hwGuide.congested = [];
+      clearInterval(hwGuide.jamTimer);
       hwGuide.token++;
       hwGuide.autoOpened = false;
       hwGuide.dismissed = false;
@@ -10348,6 +10790,73 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
     function hwRangeCongested(a, b) {
       return hwGuide.congested.some(r => r.m0 < b && r.m1 > a);
     }
+    // 混み具合は2段階: 赤(渋滞) と 黄(混雑)。空いている所は何も付けない
+    const HW_JAM_COLOR = { yellow: '#facc15', red: '#ef4444', dark: '#b91c1c' };   // 黄=少し混んでる / 赤=混んでる / 濃い赤=大渋滞
+    const HW_JAM_RANK = { yellow: 1, red: 2, dark: 3 };
+    // 区間 a〜b のうち、いちばん重い混み具合('red' > 'yellow' > null)
+    function hwJamLevel(a, b) {
+      let lv = null;
+      for (const r of hwGuide.congested) {
+        if (r.m0 < b && r.m1 > a) { const l = r.level || 'red'; if (!lv || HW_JAM_RANK[l] > HW_JAM_RANK[lv]) lv = l; }
+      }
+      return lv;
+    }
+    // 区間 a〜b の帯の色。混んでる所だけ赤/黄にして、あとは普通の色(下=手前a、上=奥b)
+    function hwBarBackground(a, b) {
+      const normal = 'var(--ac,#38bdf8)';
+      if (!hwGuide.congested.length || b <= a) return normal;
+      const segs = [];
+      hwGuide.congested.forEach(r => { const s0 = Math.max(a, r.m0), s1 = Math.min(b, r.m1); if (s1 > s0) segs.push({ s0, s1, lv: r.level || 'red' }); });
+      if (!segs.length) return normal;
+      const cuts = new Set([a, b]);
+      segs.forEach(x => { cuts.add(x.s0); cuts.add(x.s1); });
+      const xs = [...cuts].sort((p, q) => p - q);
+      const stops = [];
+      for (let i = 0; i < xs.length - 1; i++) {
+        const mid = (xs[i] + xs[i + 1]) / 2;
+        let lv = null;
+        segs.forEach(x => { if (x.s0 <= mid && mid < x.s1 && (!lv || HW_JAM_RANK[x.lv] > HW_JAM_RANK[lv])) lv = x.lv; });
+        const col = lv ? HW_JAM_COLOR[lv] : normal;
+        const p0 = ((xs[i] - a) / (b - a) * 100).toFixed(1), p1 = ((xs[i + 1] - a) / (b - a) * 100).toFixed(1);
+        stops.push(`${col} ${p0}%`, `${col} ${p1}%`);
+      }
+      return `linear-gradient(to top, ${stops.join(', ')})`;
+    }
+    // ルートの高速区間の混み具合を、Mapboxの渋滞情報から作る(トークンがあるときだけ)。
+    // 混んでる所だけ hwGuide.congested に入れる: level='yellow'(少し混んでる) / 'red'(混んでる・大渋滞)
+    async function hwLoadCongestion(myToken) {
+      try {
+        const tk = (typeof mbtToken === 'function') ? mbtToken() : '';
+        const model = hwGuide.model, geom = pendingRouteGeometry;
+        if (!tk || !model || !geom || !geom.coordinates || geom.coordinates.length < 2) return;
+        const runs = await mbtRouteRuns(geom, hwGuide.traveled, 150000);   // 地図の色付けと同じ結果を使う(二重に取らない)
+        if (!runs || runs === 'auth') return;
+        if (hwGuide.token !== myToken) return;
+        // 混んでる区間のうち、自分のルートの高速に乗っている部分だけを、ルート上の距離(m)に直す
+        const pieces = [];
+        runs.forEach(r => {
+          const c = r.coords, step = Math.max(1, Math.floor(c.length / 60));
+          let lo = null, hi = null;
+          const flush = () => { if (lo !== null && hi - lo >= 100) pieces.push({ m0: lo, m1: hi, level: r.level === 'moderate' ? 'yellow' : (r.level === 'severe' ? 'dark' : 'red') }); lo = hi = null; };
+          for (let i = 0; i < c.length; i += step) {
+            const n = nearestOnHighwayLine(model.pts, c[i][1], c[i][0]);
+            if (n && n.d <= 60) { if (lo === null) lo = hi = n.m; else { lo = Math.min(lo, n.m); hi = Math.max(hi, n.m); } }
+            else flush();
+          }
+          flush();
+        });
+        pieces.sort((p, q) => p.m0 - q.m0);
+        const merged = [];
+        pieces.forEach(p => {
+          const last = merged[merged.length - 1];
+          if (last && last.level === p.level && p.m0 - last.m1 <= 300) last.m1 = Math.max(last.m1, p.m1);
+          else merged.push({ m0: p.m0, m1: p.m1, level: p.level });
+        });
+        hwGuide.congested = merged;
+        hwGuide.simulated = false;
+        if (currentSideMode === 'highway') renderHighwayPanel();
+      } catch (e) { console.warn('hwLoadCongestion failed', e); }
+    }
 
     function renderHighwayPanel() {
       const listEl = document.getElementById('hwList');
@@ -10374,7 +10883,9 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
       const nowMs = Date.now();
       const clockAt = (m) => fmtClock(nowMs + (model.timeAt(m) - tNow) * 1000);
       exitNameEl.textContent = exitFac ? exitFac.name : '高速出口';
-      exitInfoEl.textContent = `${fmtDistShort(Math.max(0, exitM - traveled))}先 ・ あと${minutesTo(exitM)}分 ・ ${clockAt(exitM)}着`;
+      const exitTitleEl = document.getElementById('hwExitTitle');
+      if (exitTitleEl) exitTitleEl.textContent = exitFac ? ((typeof g3dHwBase === 'function' ? g3dHwBase(exitFac.name) : exitFac.name) + (exitFac.kind === 'JCT' ? 'JCT' : '出口')) : (hwGuide.loaded ? '出口の名前が見つかりません' : '出口の名前を解析中…');
+      exitInfoEl.innerHTML = `<span style="color:#fde047;font-weight:900;font-size:13px">${fmtDistShort(Math.max(0, exitM - traveled))}先</span> ・ <span style="color:#a5f3fc;font-weight:800">あと${minutesTo(exitM)}分</span> ・ <span style="color:#fff;font-weight:700">${clockAt(exitM)}着</span>`;
       const tollEl = document.getElementById('hwExitToll');
       if (tollEl) tollEl.textContent = `料金 約${hwTollFrom(range, exitM).toLocaleString()}円(概算)`;
 
@@ -10393,16 +10904,39 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
       if (jamEl) {
         const jam = hwGuide.congested.find(r => r.m1 > traveled && r.m0 < range.m1);
         if (jam) {
+          const jl = jam.level || 'red';
+          const word = jl === 'yellow' ? '混雑' : jl === 'dark' ? '大渋滞' : '渋滞';
           const from = Math.max(jam.m0, traveled), lenKm = (jam.m1 - from) / 1000;
-          const delayMin = Math.max(1, Math.round(lenKm * 2.25));   // 時速20kmで通過し、通常(時速80km)より遅れる想定
-          const where = jam.m0 <= traveled ? '渋滞中' : `${fmtDistShort(jam.m0 - traveled)}先 渋滞`;
+          const delayMin = Math.max(1, Math.round(lenKm * (jl === 'yellow' ? 0.75 : jl === 'dark' ? 4 : 2.25)));   // 混雑は時速60km・渋滞は時速20km・大渋滞は時速15kmで通る想定で、通常(時速80km)との差
+          const where = jam.m0 <= traveled ? `${word}中` : `${fmtDistShort(jam.m0 - traveled)}先 ${word}`;
           jamEl.textContent = `${where} ${lenKm.toFixed(1)}km ・ 約${delayMin}分の遅れ` + (hwGuide.simulated ? '(デモの仮表示)' : '');
+          jamEl.style.color = jl === 'yellow' ? '#fde047' : '#fca5a5';
         } else {
           jamEl.textContent = '';
+          jamEl.style.color = '';
         }
       }
 
-      const upcoming = facs.filter(f => f.m > traveled + 30 && f.m >= range.m0 && f.m <= range.m1 + 300).slice(0, 4);
+      listEl.innerHTML = hwBuildList(range, traveled, model);
+    }
+
+    // 前方の施設(同じ種類・同じ名前が1.5km以内に続くものは、二重登録なので1つにする)
+    function hwUpcoming(range, traveled) {
+      const out = [];
+      hwGuide.facilities.filter(f => f.m > traveled + 30 && f.m >= range.m0 && f.m <= range.m1 + 300).forEach(f => {
+        const last = out[out.length - 1];
+        if (last && last.kind === f.kind && last.name === f.name && f.m - last.m < 1500) return;
+        out.push(f);
+      });
+      return out.slice(0, 4);
+    }
+    // 次のIC・JCT・SA・PAのカード一覧(高速道路パネルとAxionで、同じ見た目を使う)
+    function hwBuildList(range, traveled, model) {
+      const tNow = model.timeAt(traveled);
+      const minutesTo = (m) => Math.max(0, Math.round((model.timeAt(m) - tNow) / 60));
+      const nowMs = Date.now();
+      const clockAt = (m) => fmtClock(nowMs + (model.timeAt(m) - tNow) * 1000);
+      const upcoming = hwUpcoming(range, traveled);
       const BADGE = {
         IC: 'bg-white text-green-800', JCT: 'bg-purple-200 text-purple-900',
         SA: 'bg-amber-200 text-amber-900', PA: 'bg-sky-200 text-sky-900'
@@ -10411,26 +10945,26 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
       // 各区間の色つきの帯を、隙間なく上までつなげて、現在地から続く一本の線に見えるようにする
       // (角を丸めない・行の間に余白を作らない、が「一本の線」に見せるポイント)
       try { SHOLOG.trafficCheck(traveled); } catch (_e) {}
-      const nowJam = hwGuide.congested.length && hwRangeCongested(traveled - 1, traveled + 1);
+      const nowLv = hwGuide.congested.length ? hwJamLevel(traveled - 1, traveled + 1) : null;
       let html = `<div class="flex items-stretch gap-1 h-6">
           <div class="w-12"></div>
-          <div class="w-3 flex justify-center"><div class="w-1.5 h-full" style="background:${nowJam ? '#ef4444' : 'var(--ac,#38bdf8)'}"></div></div>
+          <div class="w-3 flex justify-center"><div class="w-1.5 h-full" style="background:${nowLv ? HW_JAM_COLOR[nowLv] : 'var(--ac,#38bdf8)'}"></div></div>
           <div class="flex-1 flex items-center text-[9px] text-slate-500">
-            <i class="fa-solid fa-location-arrow text-cyan-400 text-[10px] mr-1" style="transform:rotate(-45deg)"></i>現在地${nowJam ? ' <span class="text-red-400 font-bold ml-1">渋滞中</span>' : ''}
+            <i class="fa-solid fa-location-arrow text-cyan-400 text-[10px] mr-1" style="transform:rotate(-45deg)"></i>現在地${nowLv ? ` <span class="${nowLv === 'yellow' ? 'text-yellow-300' : 'text-red-400'} font-bold ml-1">${nowLv === 'yellow' ? '混雑中' : nowLv === 'dark' ? '大渋滞中' : '渋滞中'}</span>` : ''}
           </div>
         </div>`;
       let prev = traveled;
       upcoming.forEach(f => {
-        const jam = hwRangeCongested(prev, f.m);
-        const bar = jam ? '#ef4444' : 'var(--ac,#38bdf8)';
+        const lv = hwJamLevel(prev, f.m);
+        const bar = hwBarBackground(prev, f.m);
         prev = f.m;
         // 2行目: 種類 ・ 到着時刻 ・(IC/JCTは)ここで降りたときの概算料金
         const sub = [HW_KIND_JA[f.kind], `${clockAt(f.m)}着`];
         if (f.kind === 'IC' || f.kind === 'JCT') sub.push(`約${hwTollFrom(range, f.m).toLocaleString()}円`);
         html += `<div class="flex items-stretch gap-1 min-h-[44px]">
             <div class="w-12 text-right leading-tight pt-1">
-              <div class="text-[12px] font-black ${jam ? 'text-red-300' : 'text-white'} font-mono">${fmtDistShort(f.m - traveled)}</div>
-              <div class="text-[9px] text-slate-400">あと${minutesTo(f.m)}分</div>
+              <div class="text-[12px] font-black ${lv === 'yellow' ? 'text-yellow-200' : lv ? 'text-red-300' : 'text-yellow-300'} font-mono">${fmtDistShort(f.m - traveled)}</div>
+              <div class="text-[9px] text-cyan-300 font-bold">あと${minutesTo(f.m)}分</div>
             </div>
             <div class="w-3 flex justify-center"><div class="w-1.5 h-full" style="background:${bar}"></div></div>
             <div class="flex-1 min-w-0 bg-green-700/90 border border-green-500/60 rounded px-1.5 py-0.5 my-0.5 flex flex-col justify-center">
@@ -10444,12 +10978,67 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
       });
       if (!upcoming.length) {
         const msg = !hwGuide.loaded
-          ? '施設情報を取得中…'
+          ? '施設情報を取得中…' + hwProgText()
           : (hwGuide.fetchError ? '施設情報を取得できませんでした。通信状態を確認して再度お試しください。' : 'この区間で登録された前方施設はありません');
-        html += `<div class="text-[10px] text-slate-500 p-2">${msg}</div>`;
+        html += `<div class="text-[10px] text-slate-500 p-2">${msg}<div class="mt-1"><button onclick="hwRefetchFacilities()" class="px-2 py-1 rounded border border-slate-500 bg-slate-800 text-slate-100 active:scale-95">もう一回取る</button></div></div>`;
       }
-      listEl.innerHTML = html;
+      else if (!hwGuide.loaded && hwGuide.progress) {
+        html += `<div class="text-[9px] text-slate-500 px-2 py-1 animate-pulse">この先も解析中… ${hwProgText()}</div>`;
+      }
+      return html;
     }
+    window.__axHwAhead = function () {
+      try {
+        const model = hwGuide.model;
+        if (!model) return { html: '', n: 0, active: false };
+        const traveled = hwGuide.traveled;
+        const range = currentHighwayRange(traveled) || model.ranges.find(r => r.m0 > traveled);
+        if (!range) return { html: '', n: 0 };
+        const n = hwUpcoming(range, traveled).length;
+        return { html: n ? hwBuildList(range, traveled, model) : '', n, active: !!hwGuide.active, failed: !!(hwGuide.loaded && hwGuide.fetchError) };
+      } catch (_e) { return { html: '', n: 0 }; }
+    };
+    // 走行前(ルート確認中)でも、高速の施設(IC・JCT・SA・PA)を本体と同じ方法で取得して渡す
+    let __axFacCache = { steps: null, items: [], done: false };
+    window.__axMainFacAsync = function () {
+      try {
+        const waitFor = (get, done) => new Promise(res => {      // 20秒まで待ち、間に合わなければ途中までの結果を返す
+          let n = 0;
+          const t = setInterval(() => { n++; if (done() || n >= 20) { clearInterval(t); res(get()); } }, 1000);
+        });
+        if (hwGuide.active && hwGuide.model) return waitFor(() => hwGuide.facilities.slice(), () => hwGuide.loaded);   // 本体が取得中なら、同じ通信を二重にしない
+        if (!pendingGuidanceSteps || !pendingGuidanceSteps.length) return Promise.resolve([]);
+        if (__axFacCache.steps === pendingGuidanceSteps) return waitFor(() => __axFacCache.items.slice(), () => __axFacCache.done);
+        const model = buildHighwayModel(pendingGuidanceSteps);
+        if (!model || !model.ranges.length) return Promise.resolve([]);
+        const steps = pendingGuidanceSteps;
+        const c = __axFacCache = { steps, items: [], done: false };
+        fetchHighwayFacilities(model, items => { c.items = items; }, { getTraveled: () => 0 }).then(r => { c.items = (r && r.items) || c.items; }).catch(() => {}).then(() => {
+          c.done = true;
+          if (!c.items.length && __axFacCache === c) __axFacCache = { steps: null, items: [], done: false };   // 失敗は覚えず、次の解析でやり直す
+        });
+        return waitFor(() => c.items.slice(), () => c.done);
+      } catch (_e) { return Promise.resolve([]); }
+    };
+    // Axion用: 解析中の施設を、取れた分だけいつでも見られるようにする(12kmずつ増えていく)
+    window.__axMainFacLive = function () {
+      try {
+        if (hwGuide.active && hwGuide.model) return { rid: 'main' + hwGuide.token, items: hwGuide.facilities.slice(), done: !!hwGuide.loaded };
+        if (__axFacCache && __axFacCache.steps) return { rid: 'pre', items: __axFacCache.items.slice(), done: !!__axFacCache.done };
+      } catch (_e) { /* 無視 */ }
+      return null;
+    };
+    // Axionの経路解析が、ナビ本体で選んだルートをそのまま使えるように渡す
+    window.__axMainRoute = function () {
+      try {
+        if (!pendingRouteGeometry || !pendingRouteGeometry.coordinates || pendingRouteGeometry.coordinates.length < 2) return null;
+        return {
+          geom: pendingRouteGeometry, dist: totalRouteDistanceMeters, dur: totalRouteDurationSeconds,
+          hw: (() => { try { const m = hwGuide.model || buildHighwayModel(pendingGuidanceSteps || []); return !!(m && m.ranges.length); } catch (_e) { return false; } })(),
+          fac: hwGuide.loaded ? hwGuide.facilities.map(f => ({ kind: f.kind, name: f.name, m: f.m })) : []
+        };
+      } catch (_e) { return null; }
+    };
     /* ============ 高速道路の施設案内 ここまで ============ */
 
     /* ============ スピードメーター(メーターモード)を実際の速度に合わせる ============
@@ -11384,9 +11973,9 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
         case 'right': return '↱';
         case 'slight left': return '↖';
         case 'slight right': return '↗';
-        case 'sharp left': return '↩';
-        case 'sharp right': return '↪';
-        case 'uturn': return '↶';
+        case 'sharp left': return '↙';
+        case 'sharp right': return '↘';
+        case 'uturn': return maneuver.uside === 'right' ? '↷' : '↶';
         default: return '↑';
       }
     }
@@ -11961,7 +12550,7 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
       if (m.type === 'arrive') return '目的地です';
       if (m.type === 'roundabout' || m.type === 'rotary') return 'ロータリー';
       const mod = m.modifier || '';
-      if (mod === 'uturn') return 'Uターン';
+      if (mod === 'uturn') return m.uside === 'right' ? '右Uターン' : m.uside === 'left' ? '左Uターン' : 'Uターン';
       const side = /left/.test(mod) ? '左' : /right/.test(mod) ? '右' : '';
       const prefix = /^slight/.test(mod) ? '斜め' : /^sharp/.test(mod) ? '大きく' : '';
       const dir = side ? `${prefix}${side}方向` : '';
@@ -14676,7 +15265,284 @@ if (walkModeOn()) return;   // 歩行者モードではカメラを使わない
       info.innerHTML = `いまの縮尺: 約${qzFmt(qzMetersForZoom(z))}(画面の線${QZ_BAR_PX}pxぶん)<br>地図の横はば 約${w < 1000 ? Math.round(w / 10) * 10 + 'm' : (w / 1000).toFixed(w < 10000 ? 1 : 0) + 'km'}`;
       box.innerHTML = QZ_PRESETS.map((p) => `<button onclick="quickMapZoomMeters(${p[1]})" class="text-[10px] font-bold py-1.5 rounded-lg border active:scale-95 ${qzNear(p[1], z) ? 'bg-cyan-600 border-cyan-300 text-white' : 'bg-slate-900 border-slate-700 text-slate-200'}">${p[0]}</button>`).join('');
     }
-    function quickHighwayAhead() {                                  // 高速道路のこの先(出口・SA/PA・JCT・料金・渋滞)を、右の画面に出す
+/* ============ 渋滞表示(Mapbox) ============
+       ルートに沿って、Mapboxの渋滞情報(driving-traffic)を約60kmずつ取り、混んでいる所だけ色を重ねる。
+       黄=少し混んでいる / 赤=混んでいる / 濃い赤=大渋滞。空いている所は今まで通り。
+       アクセストークンは、このスマホの中(localStorage)だけに保存する。 */
+    const MBT = { on: false, layer: null, tiles: null, tilesAt: 0, partCache: {}, coolUntil: 0, timer: null, busy: false, KEY: 'shoMapboxToken', COLORS: { moderate: '#facc15', heavy: '#ef4444', severe: '#7f1d1d' } };
+    function mbtToken() { try { return localStorage.getItem(MBT.KEY) || ''; } catch (e) { return ''; } }
+    function mbtStatus(msg, ms) {
+      let el = document.getElementById('mbtStatus');
+      if (!el) {
+        el = document.createElement('div'); el.id = 'mbtStatus';
+        el.style.cssText = 'position:fixed;left:12px;bottom:12px;z-index:9990;background:rgba(15,23,42,.92);color:#e2e8f0;border:1px solid #475569;border-radius:10px;padding:6px 10px;font-size:12px;font-weight:700;max-width:70vw';
+        document.body.appendChild(el);
+      }
+      el.textContent = msg; el.style.display = 'block';
+      clearTimeout(el._t);
+      if (ms) el._t = setTimeout(() => { el.style.display = 'none'; }, ms);
+    }
+    // 混んでいる区間だけを、連続する同じレベルごとにまとめて返す: [{level, coords:[[lon,lat],...]}]
+    function mbtRuns(coords, ann) {
+      const runs = [];
+      const n = Math.min(ann.length, coords.length - 1);
+      let cur = null;
+      for (let i = 0; i < n; i++) {
+        const lv = ann[i];
+        if (lv !== 'moderate' && lv !== 'heavy' && lv !== 'severe') { cur = null; continue; }
+        if (cur && cur.level === lv) cur.coords.push(coords[i + 1]);
+        else { cur = { level: lv, coords: [coords[i], coords[i + 1]] }; runs.push(cur); }
+      }
+      return runs;
+    }
+    function mbtCut(co) {   // ルートを約60kmごとに分けて、各区間の始点・中間・終点(3点)を返す
+      const R = 6371000, rad = Math.PI / 180;
+      const d = (a, b) => Math.hypot((b[1] - a[1]) * rad, (b[0] - a[0]) * rad * Math.cos((a[1] + b[1]) * 0.5 * rad)) * R;
+      const cum = [0];
+      for (let i = 1; i < co.length; i++) cum.push(cum[i - 1] + d(co[i - 1], co[i]));
+      const total = cum[cum.length - 1], parts = [];
+      const N = Math.max(1, Math.ceil(total / 60000));
+      let prev = 0;
+      for (let k = 1; k <= N; k++) {
+        let end = k === N ? co.length - 1 : cum.findIndex(c => c >= total * k / N);
+        if (end <= prev) continue;
+        let mid = cum.findIndex(c => c >= (cum[prev] + cum[end]) / 2);
+        const part = (mid <= prev || mid >= end) ? [co[prev], co[end]] : [co[prev], co[mid], co[end]];
+        part.m0 = cum[prev]; part.m1 = cum[end];
+        parts.push(part);
+        prev = end;
+      }
+      return parts;
+    }
+    // ---- Mapboxへの問い合わせを減らす仕組み ----
+    // ・約60kmの区間ごとに結果を覚えて、近い区間は2.5分、遠い区間は15分のあいだは取り直さない
+    // ・走行中は、いまの位置から150km先までの区間だけ取る(走り終えた所や、ずっと先は取らない)
+    // ・地図の色付けと、高速の先の情報は、同じ結果を使う(二重に取らない)
+    // ・上限(HTTP 429)に当たったら、しばらく休む
+    // ================= Mapboxの呼び出しの交通整理(Mapboxへの問い合わせは、ぜんぶここを通す) =================
+    // ・1回ずつ順番に、最低1.5秒あけて送る(=1分に最大40回。Mapboxの制限は1分300回なので、ずっと下)
+    // ・同じ問い合わせが同時に来ても1回だけ送る / 同じ問い合わせは覚えた結果を使う
+    // ・1日の回数に上限をつける(使いすぎ防止)
+    // ・429(上限)に当たったら、Retry-Afterか、60秒→2分→4分…と倍々で休む。休み時間はスマホに保存して、再起動してもすぐ再開しない
+    const MBX = { gapMs: 1500, last: 0, chain: Promise.resolve(), inflight: {}, cache: {}, fails: 0, MAX_DAILY: 2000, DAILY_KEY: 'shoMbxDaily', COOL_KEY: 'shoMbxCool' };
+    function mbxToday() {
+      try {
+        const d = new Date(), day = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+        const o = JSON.parse(localStorage.getItem(MBX.DAILY_KEY) || 'null');
+        return (o && o.day === day) ? o.n : 0;
+      } catch (e) { return 0; }
+    }
+    function mbxBump() {
+      try {
+        const d = new Date(), day = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+        localStorage.setItem(MBX.DAILY_KEY, JSON.stringify({ day, n: mbxToday() + 1 }));
+      } catch (e) { /* 保存できなくても動く */ }
+    }
+    function mbxCoolLeft() {
+      try { MBT.coolUntil = Math.max(MBT.coolUntil || 0, parseInt(localStorage.getItem(MBX.COOL_KEY) || '0', 10) || 0); } catch (e) {}
+      return Math.max(0, Math.round(((MBT.coolUntil || 0) - Date.now()) / 1000));
+    }
+    function mbxInfo() { const left = mbxCoolLeft(); return ' (今日のMapbox ' + mbxToday() + '回' + (left > 0 ? ' / 休み中 あと' + left + '秒' : '') + ')'; }
+    function mbxGet(url, ttlMs) {
+      const key = url.replace(/access_token=[^&]*/, '');
+      const c = MBX.cache[key];
+      if (c && Date.now() - c.t < ttlMs) return Promise.resolve(c);
+      if (MBX.inflight[key]) return MBX.inflight[key];
+      const job = MBX.chain.then(() => mbxRun(url, key)).finally(() => { delete MBX.inflight[key]; });
+      MBX.chain = job.catch(() => null);
+      MBX.inflight[key] = job;
+      return job;
+    }
+    async function mbxRun(url, key) {
+      if (mbxCoolLeft() > 0) return { status: 429, cooling: true };
+      if (mbxToday() >= MBX.MAX_DAILY) { mbtStatus('今日のMapboxの使いすぎ防止(' + MBX.MAX_DAILY + '回)に達したで。覚えてる結果だけ使うで', 6000); return { status: 429, budget: true }; }
+      const wait = MBX.last + MBX.gapMs - Date.now();
+      if (wait > 0) await new Promise(r => setTimeout(r, wait));
+      MBX.last = Date.now();
+      mbxBump();
+      let res;
+      try { res = await fetch(url); } catch (e) { return { status: 0 }; }
+      if (res.status === 429) {
+        MBX.fails++;
+        const ra = parseInt(res.headers.get('Retry-After') || '', 10);
+        const sec = ra > 0 ? Math.min(ra, 3600) : Math.min(1800, 60 * Math.pow(2, MBX.fails - 1));
+        MBT.coolUntil = Date.now() + sec * 1000;
+        try { localStorage.setItem(MBX.COOL_KEY, String(MBT.coolUntil)); } catch (e) {}
+        mbtStatus('Mapboxの上限(HTTP 429)に当たったで。' + sec + '秒休んで、覚えてる結果を使うで' + mbxInfo(), 8000);
+        return { status: 429 };
+      }
+      if (!res.ok) return { status: res.status };
+      MBX.fails = 0;
+      let data = null;
+      try { data = await res.json(); } catch (e) { return { status: 0 }; }
+      const out = { t: Date.now(), status: 200, data };
+      const ks = Object.keys(MBX.cache);
+      if (ks.length > 30) { ks.sort((a, b) => MBX.cache[a].t - MBX.cache[b].t).slice(0, ks.length - 30).forEach(k => delete MBX.cache[k]); }   // 覚えすぎない
+      MBX.cache[key] = out;
+      return out;
+    }
+    // 区間の覚えを、スマホにも保存(再起動しても、30分以内なら取り直さない)
+    function mbtPartKey(p) { return 'p:' + p.map(c => c[0].toFixed(2) + ',' + c[1].toFixed(2)).join(';'); }
+    function mbtLoadParts() {
+      if (MBT.loaded) return;
+      MBT.loaded = true;
+      try {
+        const o = JSON.parse(localStorage.getItem('shoMbtParts') || '{}');
+        Object.keys(o).forEach(k => { if (o[k] && Date.now() - o[k].t < 1800000) MBT.partCache[k] = o[k]; });
+      } catch (e) { /* 読めなければ空から */ }
+    }
+    function mbtSaveParts() {
+      try {
+        const o = {};
+        Object.keys(MBT.partCache).forEach(k => { if (Date.now() - MBT.partCache[k].t < 1800000) o[k] = MBT.partCache[k]; });
+        let txt = JSON.stringify(o);
+        if (txt.length > 700000) { const ks = Object.keys(o).sort((a, b) => o[a].t - o[b].t); while (txt.length > 700000 && ks.length) { delete o[ks.shift()]; txt = JSON.stringify(o); } }
+        localStorage.setItem('shoMbtParts', txt);
+      } catch (e) { /* 保存できなくても動く */ }
+    }
+    function mbtRouteKey(co) { const a = co[0], b = co[co.length - 1]; return co.length + ':' + a[0].toFixed(3) + ',' + a[1].toFixed(3) + ':' + b[0].toFixed(3) + ',' + b[1].toFixed(3); }
+    async function mbtFetchPart(pts, tk) {
+      const r = await mbxGet('https://api.mapbox.com/directions/v5/mapbox/driving-traffic/' + pts.map(p => p[0].toFixed(5) + ',' + p[1].toFixed(5)).join(';')
+        + '?alternatives=false&overview=full&geometries=geojson&annotations=congestion&access_token=' + encodeURIComponent(tk), 120000);
+      if (!r) return null;
+      if (r.status === 401 || r.status === 403) return 'auth';
+      if (r.status !== 200) { if (!r.cooling && !r.budget && r.status !== 429) mbtStatus('渋滞情報エラー: HTTP ' + r.status, 5000); return null; }
+      const data = r.data;
+      const rt = data && data.routes && data.routes[0];
+      if (!rt) return null;
+      const ann = [].concat(...(rt.legs || []).map(l => (l.annotation && l.annotation.congestion) || []));
+      return mbtRuns(rt.geometry.coordinates, ann);
+    }
+    async function mbtRouteRuns(geom, traveledM, windowM, onStatus) {
+      const tk = mbtToken();
+      if (!tk) return null;
+      mbtLoadParts();
+      const co = geom.coordinates, parts = mbtCut(co), out = [];
+      for (let i = 0; i < parts.length; i++) {
+        const p = parts[i], ck = mbtPartKey(p), now = Date.now();
+        const inWindow = p.m1 >= traveledM - 1000 && p.m0 <= traveledM + windowM;
+        const near = p.m1 >= traveledM - 1000 && p.m0 <= traveledM + 60000;
+        const c = MBT.partCache[ck];
+        if (inWindow && (!c || now - c.t > (near ? 150000 : 900000)) && mbxCoolLeft() === 0) {
+          const r = await mbtFetchPart(p, tk);
+          if (r === 'auth') return 'auth';
+          if (r) { MBT.partCache[ck] = { t: Date.now(), runs: r }; mbtSaveParts(); }
+        }
+        const cc = MBT.partCache[ck];
+        if (cc && Date.now() - cc.t < 1800000) cc.runs.forEach(r => out.push(r));   // 30分より古い結果は使わない
+        if (onStatus) onStatus(i + 1, parts.length);
+      }
+      return out;
+    }
+    function mbtClear() {
+      if (MBT.layer && map) { try { map.removeLayer(MBT.layer); } catch (e) {} }
+      MBT.layer = null;
+      if (MBT.tiles && map) { try { map.removeLayer(MBT.tiles); } catch (e) {} }
+      MBT.tiles = null;
+    }
+    // ルートが無いとき: Mapboxの渋滞タイル(mapbox-traffic-v1)を、地図の画面に映ってる範囲ぜんぶに重ねる
+    function mbtShowTiles() {
+      const token = mbtToken();
+      if (!token || typeof map === 'undefined' || !map) return;
+      if (!(window.L && L.vectorGrid && L.vectorGrid.protobuf)) { mbtStatus('渋滞タイルの部品が読み込めてへん(ネットを確認してな)', 6000); return; }
+      if (MBT.tiles && Date.now() - MBT.tilesAt < 600000 && map.hasLayer(MBT.tiles)) return;   // 10分は作り直さない(タイルの取り直しを減らす)
+      mbtClear();
+      MBT.tiles = L.vectorGrid.protobuf('https://api.mapbox.com/v4/mapbox.mapbox-traffic-v1/{z}/{x}/{y}.mvt?access_token=' + encodeURIComponent(token), {
+        rendererFactory: L.canvas.tile, maxNativeZoom: 16, minZoom: 10, interactive: false, updateWhenIdle: true, updateWhenZooming: false, keepBuffer: 1,
+        attribution: '© Mapbox',
+        vectorTileLayerStyles: {
+          traffic: function (p) {
+            const c = MBT.COLORS[p && p.congestion];
+            return c ? { weight: 5, color: c, opacity: 1 } : { weight: 0, opacity: 0 };   // 空いてる道は何も重ねない
+          }
+        }
+      }).addTo(map);
+      MBT.tilesAt = Date.now();
+      try { MBT.tiles.bringToFront(); } catch (e) {}
+    }
+    async function mbtRefresh() {
+      if (!MBT.on || MBT.busy) return;
+      const geom = pendingRouteGeometry;
+      if (!geom || !geom.coordinates || geom.coordinates.length < 2 || typeof map === 'undefined' || !map) { mbtShowTiles(); return; }
+      const token = mbtToken(); if (!token) return;
+      MBT.busy = true;
+      try {
+        const trav = (typeof hwGuide !== 'undefined' && hwGuide.active) ? hwGuide.traveled : 0;
+        const win = (typeof isNavigating !== 'undefined' && (isNavigating || demoTimer)) ? 150000 : Infinity;
+        const runsAll = await mbtRouteRuns(geom, trav, win);
+        if (runsAll === 'auth') { try { localStorage.removeItem(MBT.KEY); } catch (e) {} MBT.on = false; mbtClear(); quickTrafficLabelUpdate(); mbtStatus('トークンが合ってへんみたい。もう一回入れてな', 6000); return; }
+        if (!runsAll) return;
+        mbtClear();
+        MBT.layer = L.layerGroup().addTo(map);
+        runsAll.forEach(r => L.polyline(r.coords.map(c => [c[1], c[0]]), { color: MBT.COLORS[r.level], weight: 7, opacity: 1, lineCap: 'round', lineJoin: 'round', interactive: false }).addTo(MBT.layer).bringToFront());
+      } catch (e) {
+        console.error('Mapbox traffic failed', e);
+        mbtStatus('渋滞情報を取れへんかった(通信を確認してな)', 6000);
+      } finally { MBT.busy = false; }
+    }
+    function quickTrafficLabelUpdate() { const el = document.getElementById('quickTrafficLabel'); if (el) el.textContent = MBT.on ? '渋滞表示 ON' : '渋滞表示'; }
+    function mbtAskToken(then) {
+      const box = document.createElement('div');
+      box.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center';
+      box.innerHTML = '<div style="background:#0f172a;border:1px solid #475569;border-radius:14px;padding:16px;width:min(92vw,460px);color:#e2e8f0;font-family:inherit">'
+        + '<div style="font-weight:800;font-size:15px;margin-bottom:6px">Mapboxのアクセストークン</div>'
+        + '<div style="font-size:11px;color:#94a3b8;margin-bottom:8px">mapbox.com で作った「pk.」で始まるトークンを入れてな。このスマホの中だけに保存されるで。</div>'
+        + '<input id="mbtInput" type="text" autocomplete="off" placeholder="pk.xxxxxxxx" style="width:100%;padding:8px;border-radius:8px;border:1px solid #475569;background:#020617;color:#fff;font-size:14px">'
+        + '<div style="display:flex;gap:8px;margin-top:10px;justify-content:flex-end"><button id="mbtCancel" style="padding:8px 14px;border-radius:8px;border:1px solid #475569;color:#cbd5e1">やめる</button>'
+        + '<button id="mbtSave" style="padding:8px 14px;border-radius:8px;background:#0891b2;color:#fff;font-weight:800">保存して渋滞表示</button></div></div>';
+      document.body.appendChild(box);
+      const input = box.querySelector('#mbtInput'); input.value = mbtToken(); input.focus();
+      box.querySelector('#mbtCancel').onclick = () => box.remove();
+      box.querySelector('#mbtSave').onclick = () => {
+        const v = input.value.trim();
+        if (!/^pk\./.test(v)) { input.style.borderColor = '#ef4444'; return; }
+        try { localStorage.setItem(MBT.KEY, v); } catch (e) {}
+        box.remove(); then();
+      };
+    }
+    function quickToggleTraffic() {
+      if (MBT.on) { MBT.on = false; clearInterval(MBT.timer); MBT.timer = null; mbtClear(); quickTrafficLabelUpdate(); mbtStatus('渋滞表示をOFFにしたで', 2500); return; }
+      const start = () => { MBT.on = true; quickTrafficLabelUpdate(); mbtRefresh(); clearInterval(MBT.timer); MBT.timer = setInterval(mbtRefresh, 180000); };   // 3分ごとに更新
+      if (!mbtToken()) mbtAskToken(start); else start();
+    }
+
+    // 3分ごとの渋滞の取り直し(施設を取り直しても、渋滞の更新が止まらないように)
+    function hwStartJamTimer(token) {
+      clearInterval(hwGuide.jamTimer);
+      hwLoadCongestion(token);
+      hwGuide.jamTimer = setInterval(() => {
+        if (hwGuide.token !== token || !hwGuide.active) { clearInterval(hwGuide.jamTimer); return; }
+        hwLoadCongestion(token);
+      }, 180000);
+    }
+    // 右側の「もう一回取る」ボタン: 休ませていたサーバーも戻して、最初から取り直す
+    function hwRefetchFacilities() {
+      if (!hwGuide.active || !hwGuide.model) return;
+      const model = hwGuide.model, token = ++hwGuide.token;
+      Object.keys(__ovpCool).forEach(k => delete __ovpCool[k]);
+      window.__hwDiagAt = 0; window.__hwLastErr = '';
+      hwGuide.loaded = false; hwGuide.fetchError = false; hwGuide.progress = null;
+      if (!hwGuide.simulated) hwStartJamTimer(token);
+      renderHighwayPanel();
+      hwDiagnose();
+      fetchHighwayFacilities(model, items => {
+        if (hwGuide.token !== token) return;
+        hwGuide.facilities = items;
+        hwShowNow();
+      }, { lookAhead: 100000, getTraveled: () => hwGuide.traveled, aborted: () => hwGuide.token !== token, onProgress: (d, t, w) => { if (hwGuide.token === token) hwGuide.progress = { done: d, total: t, wait: !!w }; } }).then(result => {
+        if (hwGuide.token !== token) return;
+        hwGuide.facilities = result.items || [];
+        hwGuide.fetchError = !!result.failed;
+        hwGuide.loaded = true;
+        if (currentSideMode === 'highway') renderHighwayPanel();
+      }).catch(error => {
+        if (hwGuide.token !== token) return;
+        console.error('Highway facility refetch failed:', error);
+        hwGuide.fetchError = true; hwGuide.loaded = true;
+        if (currentSideMode === 'highway') renderHighwayPanel();
+      });
+    }
+        function quickHighwayAhead() {                                  // 高速道路のこの先(出口・SA/PA・JCT・料金・渋滞)を、右の画面に出す
       initAudio();
       if (!hwGuide.active || !hwGuide.model || !hwGuide.model.ranges.length) { speak('高速道路を通るルートを案内しているときに使えます。', { force: true }); return; }
       hwGuide.manual = true; hwGuide.autoOpened = true; hwGuide.dismissed = false;
@@ -14684,10 +15550,15 @@ if (walkModeOn()) return;   // 歩行者モードではカメラを使わない
       // 前回の取得が失敗した/0件だった場合は、ボタンを押したタイミングで再取得する。
       if (hwGuide.loaded && (!hwGuide.facilities.length || hwGuide.fetchError)) {
         const model = hwGuide.model, token = ++hwGuide.token;
+        if (!hwGuide.simulated) hwStartJamTimer(token);
         hwGuide.loaded = false;
         hwGuide.fetchError = false;
         renderHighwayPanel();
-        fetchHighwayFacilities(model).then(result => {
+        fetchHighwayFacilities(model, items => {
+          if (hwGuide.token !== token) return;
+          hwGuide.facilities = items;
+          hwShowNow();
+        }, { lookAhead: 100000, getTraveled: () => hwGuide.traveled, aborted: () => hwGuide.token !== token, onProgress: (d, t, w) => { if (hwGuide.token === token) hwGuide.progress = { done: d, total: t, wait: !!w }; } }).then(result => {
           if (hwGuide.token !== token) return;
           hwGuide.facilities = result.items || [];
           hwGuide.fetchError = !!result.failed;
@@ -15190,6 +16061,21 @@ html.mc .ap-grad{background-image:linear-gradient(90deg,#3e91ff,#8ab4ff,#c4abff,
 #navDistanceUnit{font-size:.75rem!important;font-weight:700!important}
 #topNavGuidance{transform:scale(.88);transform-origin:top left}
 #navNext2{font-size:10px;font-weight:700;color:#cfd2d8;white-space:nowrap;margin-bottom:1px}
+/* 左上の案内: 黒いカード+水色の枠。上=今の交差点(道路名・距離・矢印)、左下の枠=次の次(道路名・距離・矢印)。直進などの文字の行は出さない */
+#topNavGuidance#topNavGuidance#topNavGuidance:not(.hidden){display:grid!important;grid-template-columns:auto auto;grid-template-rows:auto auto;gap:0!important;padding:0!important;overflow:hidden;background:#111214!important;border:2px solid #8ab4ff!important;border-radius:20px!important;max-width:min(92%,340px)}
+#topNavGuidance#topNavGuidance#topNavGuidance > div.flex-col{grid-area:1/1;padding:10px 6px 6px 16px;min-width:150px;max-width:230px}
+#topNavGuidance#topNavGuidance#topNavGuidance #navDestinationTitle{font-size:13px!important;font-weight:800;color:#8ab4ff!important;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:.02em}
+#topNavGuidance#topNavGuidance#topNavGuidance #navDistanceMeters{font-size:2rem!important;line-height:1.05;color:#fff}
+#topNavGuidance#topNavGuidance#topNavGuidance #navDistanceUnit{font-size:.9rem!important}
+#topNavGuidance#topNavGuidance#topNavGuidance #navTurnText{display:none!important}
+#topNavGuidance#topNavGuidance#topNavGuidance #navTurnIcon{grid-row:1 / span 2;grid-column:2;align-self:center;justify-self:center;order:0;width:auto!important;height:auto!important;background:transparent!important;box-shadow:none!important;border-radius:0!important;color:#8ab4ff!important;font-size:4rem!important;line-height:1;padding:0 20px 0 8px!important;margin:0!important}
+#navNext2Box{grid-area:2/1;border-top:2px solid #8ab4ff;border-right:2px solid #8ab4ff;padding:4px 14px 6px 16px;max-width:230px;white-space:nowrap}
+#navNext2Box .nn-name{color:#8ab4ff;font-size:11px;font-weight:800;overflow:hidden;text-overflow:ellipsis;max-width:190px}
+#navNext2Box .nn-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+#navNext2Box .nn-d{color:#fff;font-weight:700;font-size:1.45rem;line-height:1.05;font-family:ui-monospace,monospace}
+#navNext2Box .nn-d small{font-size:.7rem;font-weight:700}
+#navNext2Box .nn-arr{color:#8ab4ff;font-size:1.7rem;font-weight:900;line-height:1}
+#navNext2Box .nn-arr.end{font-size:.8rem;color:#fde047}
 #navNext2 .a{color:#fff;margin-left:4px;font-weight:900}
 #navTurnText{color:rgb(var(--c-cyan-300))!important}
 /* ダーク/ホワイト切替 */
@@ -15229,6 +16115,10 @@ html.light-mode .leaflet-container img,html.light-mode .leaflet-container canvas
   var col=$('navDestinationTitle')&&$('navDestinationTitle').parentNode;
   var n2=document.createElement('div'); n2.id='navNext2'; n2.style.display='none';
   if(col) col.insertBefore(n2,col.firstChild);
+  /* 次の次の交差点(右上の小さな枠): 何km先か + 右か左か */
+  var nn=document.createElement('div'); nn.id='navNext2Box'; nn.style.display='none';
+  nn.innerHTML='<div class="nn-name"></div><div class="nn-row"><span class="nn-d"></span><span class="nn-arr"></span></div>';
+  var tb=$('topNavGuidance'); if(tb) tb.appendChild(nn);
   function lab(m){
     if(!m) return '直進'; if(m.type==='arrive') return '目的地です';
     if(m.type==='roundabout'||m.type==='rotary') return 'ロータリー';
@@ -15245,7 +16135,14 @@ html.light-mode .leaflet-container img,html.light-mode .leaflet-container canvas
         var cum=Math.max(0,guidanceRemaining)+(q.distance||0);
         var d=cum>=1000?(cum/1000).toFixed(1)+'km':Math.round(cum)+'m';
         n2.innerHTML='次の次 '+d+' 先<span class="a">'+directionArrow(q.maneuver)+'</span>'; n2.style.display='none';
-      } else n2.style.display='none';
+        var kmT=(cum/1000).toFixed(cum<10000?2:1);
+        var isEnd=!!(q.maneuver&&q.maneuver.type==='arrive');
+        var nm=(q.roadName&&String(q.roadName).trim())||(isEnd?'目的地':'交差点');
+        nn.querySelector('.nn-name').textContent=nm;
+        nn.querySelector('.nn-d').innerHTML=kmT+'<small> km 先</small>';
+        var ar=nn.querySelector('.nn-arr'); ar.textContent=isEnd?'到着':directionArrow(q.maneuver); ar.className='nn-arr'+(isEnd?' end':'');
+        nn.style.display='block';
+      } else { n2.style.display='none'; nn.style.display='none'; }
     }catch(e){}
   };
   /* ---- ダーク / ホワイト 切替 ---- */
@@ -15880,6 +16777,7 @@ window.shoCfg={get:function(k){try{var o=JSON.parse(localStorage.getItem('shoCar
   var S={};
   S.reset=function(){D={months:{},cells:{},hwKm:0,km:0,last:null};save(true);};
   S.ready=function(){return Object.keys(D.cells).length>=30;};
+  S.fam=function(c){var g=c.route.geometry.coordinates,n=g.length,st=Math.max(1,Math.floor(n/80)),t=0,h=0;for(var i=0;i<n;i+=st){t++;if(D.cells[ck(g[i][1],g[i][0])])h++;}return t?h/t:0;};
   S.score=function(c){
     var g=c.route.geometry.coordinates,n=g.length,st=Math.max(1,Math.floor(n/80)),t=0,h=0;
     for(var i=0;i<n;i+=st){t++;if(D.cells[ck(g[i][1],g[i][0])])h++;}
@@ -15908,7 +16806,7 @@ window.shoCfg={get:function(k){try{var o=JSON.parse(localStorage.getItem('shoCar
     if(shoCfg.get('traffic')===false)return;
     if(!window.isNavigating&&typeof isNavigating!=='undefined'&&!isNavigating)return;
     (hwGuide.congested||[]).forEach(function(r){
-      if(r.m1<=tr)return;var dist=r.m0-tr,k=Math.round(r.m0/100)+(r.accident?'a':'j');
+      if(r.m1<=tr||r.level==='yellow')return;var dist=r.m0-tr,k=Math.round(r.m0/100)+(r.accident?'a':'j');
       if(dist>3000)return;
       var len=((r.m1-r.m0)/1000).toFixed(1);
       if(r.accident)say(k,dist>0?'この先、約'+(dist/1000).toFixed(1)+'キロで事故が発生しています。ご注意ください。':'事故のあった区間を走行中です。ご注意ください。');
@@ -17205,11 +18103,12 @@ function analyze(){
  if(!navigator.onLine){R.err="オフラインのため解析できません";X.render();return}
  if(R.busy)return;R.busy=true;R.err="";X.render();
  var pts=[o].concat(wps(),[d]);
- jget("https://router.project-osrm.org/route/v1/driving/"+pts.map(function(p){return p.lon+","+p.lat}).join(";")+"?overview=full&geometries=geojson&steps=true").then(function(j){
+ var mr=mainRoute(),srcP=mr?Promise.resolve({routes:[{duration:mr.dur>0?mr.dur:mr.dist/13.9,distance:mr.dist,geometry:mr.geom,legs:[]}],_main:mr}):jget("https://router.project-osrm.org/route/v1/driving/"+pts.map(function(p){return p.lon+","+p.lat}).join(";")+"?overview=full&geometries=geojson&steps=true");
+srcP.then(function(j){
   if(!j.routes||!j.routes[0])throw new Error("no route");
-  var rt=j.routes[0],c=rt.geometry.coordinates,cd=[0],i;R.d=rt;R.at=Date.now();
+  var rt=j.routes[0],c=rt.geometry.coordinates,cd=[0],i;R.d=rt;R.at=Date.now();R.src=j._main?"main":"osrm";
   for(i=1;i<c.length;i++)cd.push(cd[i-1]+hv([c[i-1][1],c[i-1][0]],[c[i][1],c[i][0]]));
-  var tot=cd[cd.length-1];R.c=c;R.cd=cd;R.km=tot/1000;R.toll=false;R.hw=false;R.exits=[];
+  var tot=cd[cd.length-1];R.c=c;R.cd=cd;R.km=tot/1000;R.toll=false;R.hw=false;R.exits=[];if(j._main){R.hw=j._main.hw;R.toll=j._main.hw}
   var acc=0;rt.legs.forEach(function(l){l.steps.forEach(function(s){
    (s.intersections||[]).forEach(function(it){var k=it.classes||[];if(k.indexOf("toll")>-1)R.toll=true;if(k.indexOf("motorway")>-1)R.hw=true});
    var m=s.maneuver||{};if(["on ramp","off ramp","fork","merge","end of road"].indexOf(m.type)>-1&&(s.name||s.destinations||s.exits)){R.exits.push({km:acc/1000,t:(m.type==="off ramp"?"出口: ":m.type==="on ramp"?"入口: ":"分岐: ")+[s.name,s.exits?"出口"+s.exits:"",s.destinations?"方面 "+s.destinations:""].filter(Boolean).join(" ")})}
@@ -17223,13 +18122,16 @@ function analyze(){
    R.wx.forEach(function(x,k){var bad=[65,75,82,95,96,99].indexOf(x.code)>-1;if(bad||x.ws>=40||x.pp>=80)X.alertAdd("warn","ルート "+x.km.toFixed(0)+"km地点("+x.t+"頃): "+X.wc(x.code)[0]+" 風"+Math.round(x.ws)+"km/h 降水"+x.pp+"%","rw"+k)})});
   /* SA/PA・IC/JCT (OpenStreetMap/Overpass) */
   var n=Math.min(28,c.length),poly=[],idxs=[];for(i=0;i<n;i++){var ci=Math.round(i*(c.length-1)/Math.max(1,n-1));idxs.push(ci);poly.push(c[ci][1].toFixed(4),c[ci][0].toFixed(4))}
-  var po=fetch("https://overpass-api.de/api/interpreter",{method:"POST",body:'[out:json][timeout:25];(nwr["highway"~"^(services|rest_area)$"](around:1500,'+poly.join(",")+');node["highway"="motorway_junction"](around:150,'+poly.join(",")+'););out center tags 120;'}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json()}).then(function(j){
+  var mf=j._main&&j._main.fac&&j._main.fac.length?j._main.fac:null;
+  function restCalc(){R.rest=[];if(rt.duration>5400){var per=R.km*7200/rt.duration,k2=1;while(per*k2<R.km-10){var best=null;R.sa.forEach(function(s){if(!best||Math.abs(s.km-per*k2)<Math.abs(best.km-per*k2))best=s});if(best&&Math.abs(best.km-per*k2)<per*.4)R.rest.push({at:per*k2,s:best});k2++}}}
+  function fillFac(mf){R.sa=[];R.ic=[];mf.forEach(function(f){var km=f.m/1000;if(f.kind==="IC"||f.kind==="JCT")R.ic.push({km:km,n:f.name,smart:false,jct:f.kind==="JCT"});else R.sa.push({km:km,n:f.name+(f.kind==="SA"?" SA":" PA"),k:f.kind==="SA"?"SA/大型":"PA/小型",op:"",wc:false,oh:""})});R.sa.sort(function(a,b){return a.km-b.km});R.ic.sort(function(a,b){return a.km-b.km});restCalc()}
+  var po=(mf?Promise.resolve(mf):(j._main&&window.__axMainFacAsync?window.__axMainFacAsync():Promise.resolve([]))).then(function(it){if(!it||!it.length)throw new Error("none");fillFac(it);try{var lv=window.__axMainFacLive?window.__axMainFacLive():null;if(lv&&!lv.done){var at0=R.at,n0=it.length,tk=setInterval(function(){try{var q=window.__axMainFacLive?window.__axMainFacLive():null;if(!q||R.at!==at0||q.rid!==lv.rid){clearInterval(tk);return}if(q.items.length&&q.items.length!==n0){n0=q.items.length;fillFac(q.items);X.render()}if(q.done)clearInterval(tk)}catch(e){clearInterval(tk)}},4000)}}catch(e){}}).catch(function(){return fetch("https://overpass-api.de/api/interpreter",{method:"POST",body:'[out:json][timeout:25];(nwr["highway"~"^(services|rest_area)$"](around:1500,'+poly.join(",")+');node["highway"="motorway_junction"](around:150,'+poly.join(",")+'););out center tags 120;'}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json()}).then(function(j){
    R.sa=[];R.ic=[];(j.elements||[]).forEach(function(e){var la=e.lat!=null?e.lat:e.center&&e.center.lat,lo=e.lon!=null?e.lon:e.center&&e.center.lon;if(la==null)return;
     var b=1e12,bi=0;idxs.forEach(function(ci,k){var dd=hv([la,lo],[c[ci][1],c[ci][0]]);if(dd<b){b=dd;bi=ci}});var km=cd[bi]/1000,t=e.tags||{},nm=t.name||t.ref||"名称なし";
     if(t.highway==="motorway_junction")R.ic.push({km:km,n:nm+(t.ref&&t.name?" ("+t.ref+")":""),smart:/スマート|Smart/i.test(nm)||t.smart==="yes"});
     else R.sa.push({km:km,n:nm,k:t.highway==="services"?"SA/大型":"PA/小型",op:t.operator||t.brand||"",wc:t.toilets==="yes"||t.toilets==="designated",oh:t.opening_hours||""})});
    R.sa.sort(function(a,b){return a.km-b.km});R.ic.sort(function(a,b){return a.km-b.km});
-   R.rest=[];if(rt.duration>5400){var per=R.km*7200/rt.duration,k2=1;while(per*k2<R.km-10){var best=null;R.sa.forEach(function(s){if(!best||Math.abs(s.km-per*k2)<Math.abs(best.km-per*k2))best=s});if(best&&Math.abs(best.km-per*k2)<per*.4)R.rest.push({at:per*k2,s:best});k2++}}});
+   R.rest=[];if(rt.duration>5400){var per=R.km*7200/rt.duration,k2=1;while(per*k2<R.km-10){var best=null;R.sa.forEach(function(s){if(!best||Math.abs(s.km-per*k2)<Math.abs(best.km-per*k2))best=s});if(best&&Math.abs(best.km-per*k2)<per*.4)R.rest.push({at:per*k2,s:best});k2++}}})});
   var pk=jget("https://overpass-api.de/api/interpreter?data="+encodeURIComponent('[out:json][timeout:15];nwr["amenity"="parking"](around:800,'+d.lat+','+d.lon+');out center tags 12;')).then(function(j){
    R.park=(j.elements||[]).map(function(e){var la=e.lat!=null?e.lat:e.center&&e.center.lat,lo=e.lon!=null?e.lon:e.center&&e.center.lon,t=e.tags||{};return{n:t.name||"名称なし",dist:hv([la,lo],[d.lat,d.lon]),fee:t.fee==="yes"?"有料":t.fee==="no"?"無料":"料金不明",cap:t.capacity||"",ty:t.parking||""}}).sort(function(a,b){return a.dist-b.dist})});
   var wrap=function(p){return p.catch(function(e){X.alertAdd("warn","ルート補助データ取得失敗: "+e.message,"rfail")})};
@@ -17237,18 +18139,36 @@ function analyze(){
  }).then(function(){
   var eta=new Date(Date.now()+R.d.duration*1000);
   R.brief="目的地まで約"+R.km.toFixed(0)+"キロ、所要約"+hm(R.d.duration)+"、到着予定"+pad(eta.getHours())+"時"+pad(eta.getMinutes())+"分です。"+(R.wx.length?"到着付近は"+X.wc(R.wx[R.wx.length-1].code)[0]+"、降水確率"+R.wx[R.wx.length-1].pp+"%。":"")+(R.rest.length?"休憩は約"+Math.round(R.rest[0].at)+"キロ付近の"+R.rest[0].s.n+"がおすすめです。":"");
- }).catch(function(e){R.err="経路解析に失敗しました ("+e.message+")";X.alertAdd("warn","ルート解析失敗: "+e.message,"ran")}).then(function(){R.busy=false;X.render();if(R.speak){R.speak=false;if(R.brief)X.say(R.brief)}});
+ }).catch(function(e){R.err="経路解析に失敗しました ("+e.message+")。ナビでルートを設定すると、そのルートで解析します";X.alertAdd("warn","ルート解析失敗: "+e.message,"ran")}).then(function(){R.busy=false;X.render();if(R.speak){R.speak=false;if(R.brief)X.say(R.brief)}});
 }
+function mainRoute(){try{var m=window.__axMainRoute&&window.__axMainRoute();if(m&&m.geom&&m.geom.coordinates&&m.geom.coordinates.length>1&&m.dist>0)return m}catch(e){}return null}
+/* ナビ本体の高速道路パネルと同じ見た目(緑のカード+現在地から続く帯)で一覧を作る */
+function fdm(m){if(m<1000)return Math.max(10,Math.round(m/10)*10)+"m";var k=m/1000;return k<10?k.toFixed(1)+"km":Math.round(k)+"km"}
+function oldNow(){return'<div class="flex items-stretch gap-1 h-6"><div class="w-12"></div><div class="w-3 flex justify-center"><div class="w-1.5 h-full" style="background:var(--ac,#38bdf8)"></div></div><div class="flex-1 flex items-center text-[9px] text-slate-500"><i class="fa-solid fa-location-arrow text-cyan-400 text-[10px] mr-1" style="transform:rotate(-45deg)"></i>現在地</div></div>'}
+function oldCard(m,min,kind,name,sub){var B={IC:"bg-white text-green-800",JCT:"bg-purple-200 text-purple-900",SA:"bg-amber-200 text-amber-900",PA:"bg-sky-200 text-sky-900"};
+ return'<div class="flex items-stretch gap-1 min-h-[44px]"><div class="w-12 text-right leading-tight pt-1"><div class="text-[12px] font-black text-yellow-300 font-mono">'+fdm(m)+'</div><div class="text-[9px] text-cyan-300 font-bold">あと'+min+'分</div></div><div class="w-3 flex justify-center"><div class="w-1.5 h-full" style="background:var(--ac,#38bdf8)"></div></div><div class="flex-1 min-w-0 bg-green-700/90 border border-green-500/60 rounded px-1.5 py-0.5 my-0.5 flex flex-col justify-center"><div class="flex items-center gap-1"><span class="text-[9px] font-black px-1 rounded '+B[kind]+'">'+kind+'</span><span class="text-[12px] font-bold text-white truncate">'+esc(name)+'</span></div><div class="text-[8px] text-green-100/90 truncate leading-tight">'+esc(sub)+'</div></div></div>'}
+function oldList(items,from){var spk=R.d&&R.km?R.d.duration/R.km:45,now=Date.now(),h=oldNow(),prev=null,out=[],KJ={IC:"インターチェンジ",JCT:"ジャンクション",SA:"サービスエリア",PA:"パーキングエリア"};
+ items.forEach(function(x){if(prev&&prev.kind===x.kind&&prev.name===x.name&&x.km-prev.km<1.5)return;prev=x;out.push(x)});
+ out.slice(0,4).forEach(function(x){var sec=Math.max(0,(x.km-from)*spk),d=new Date(now+sec*1000);h+=oldCard(Math.max(0,(x.km-from)*1000),Math.round(sec/60),x.kind,x.name,KJ[x.kind]+" ・ "+pad(d.getHours())+":"+pad(d.getMinutes())+"着")});
+ return h}
+function aheadCards(){var mi=window.__axHwAhead?window.__axHwAhead():null,h="";
+ if(mi&&mi.n>0)h=mi.html;
+ else{var cp=curKm(),from=cp?cp.km:0,items=[];
+  R.ic.forEach(function(x){items.push({km:x.km,kind:x.jct||/JCT|ジャンクション/.test(x.n)?"JCT":"IC",name:x.n})});
+  R.sa.forEach(function(x){items.push({km:x.km,kind:/SA|サービス/.test(x.n)?"SA":"PA",name:x.n.replace(/\s+(SA|PA)$/,"")})});
+  items=items.filter(function(x){return x.km-from>-0.05}).sort(function(a,b){return a.km-b.km});
+  if(items.length)h=oldList(items,from)}
+ return h?'<div style="display:flex;flex-direction:column-reverse;background:#000;border:1px solid #555;border-radius:8px;overflow:hidden;padding:2px 0">'+h+'</div>':'<div class=axs>解析後に表示（データがない場合は空）</div>'}
 var oldNav=V.NAVIGATION;
 V.NAVIGATION=function(){
  var d=dest(),h=oldNav();
  var w=wps(),all=[];try{all=waypointsList}catch(e){}
- var s='<div class=axg style="margin-top:10px"><div class=axc><h3>ルート解析 '+tag("live","OSRM")+'</h3>'+(d?'<button class=axb data-x=analyze>'+(R.busy?"解析中…":"解析・更新")+'</button><button class="axb g" data-x=brief>要約を読み上げ</button>':'<div class=axs>目的地未設定</div>')+(R.err?'<div class=axs style="color:#f87171">'+esc(R.err)+"</div>":"");
- if(R.d){var eta=new Date(R.at+R.d.duration*1000);s+=row("距離",R.km.toFixed(1)+" km")+row("所要時間",hm(R.d.duration))+row("到着予定(経由地込み)",pad(eta.getHours())+":"+pad(eta.getMinutes()))+row("有料道路",R.toll?"含む（料金額は取得不可）":"含まない")+row("高速利用",R.hw?"あり":"なし")+'<div class=axs>※渋滞は考慮していません。'+new Date(R.at).toLocaleTimeString("ja-JP").slice(0,5)+' 時点</div>'+(R.brief?'<div class=axs>'+esc(R.brief)+"</div>":"")}
+ var s='<div class=axg style="margin-top:10px"><div class=axc><h3>ルート解析 '+tag("live",R.src==="main"?"ナビのルート":"OSRM")+'</h3>'+(d?'<button class=axb data-x=analyze>'+(R.busy?"解析中…":"解析・更新")+'</button><button class="axb g" data-x=brief>要約を読み上げ</button>':'<div class=axs>目的地未設定</div>')+(R.err?'<div class=axs style="color:#f87171">'+esc(R.err)+"</div>":"");
+ if(R.d){var eta=new Date(R.at+R.d.duration*1000);s+=row("距離",R.km.toFixed(1)+" km")+row("所要時間",hm(R.d.duration))+row("到着予定(経由地込み)",pad(eta.getHours())+":"+pad(eta.getMinutes()))+row("有料道路",R.src==="main"?(R.hw?"高速区間あり（概算料金は高速案内を参照）":"含まない"):(R.toll?"含む（料金額は取得不可）":"含まない"))+row("高速利用",R.hw?"あり":"なし")+'<div class=axs>※渋滞は考慮していません。'+new Date(R.at).toLocaleTimeString("ja-JP").slice(0,5)+' 時点</div>'+(R.brief?'<div class=axs>'+esc(R.brief)+"</div>":"")}
  s+='</div><div class=axc><h3>経由地管理</h3>'+(all.length?all.map(function(x,i){return'<div class=axr><span>'+(x.passed?"[[check]] ":(i+1)+". ")+esc((x.name||"経由地").split(",")[0])+'</span><span><button class="axb g" data-x=wpup data-i='+i+'>[[up]]</button><button class="axb g" data-x=wpdn data-i='+i+'>[[down]]</button><button class=axb data-x=wpdel data-i='+i+'>[[close]]</button></span></div>'}).join(""):'<div class=axs>経由地なし</div>')+
  '<div class=axrow2><input id=axWq placeholder="経由地を検索" value="'+esc(WS.q)+'" style="flex:1;min-width:120px"><button class=axb data-x=wsearch>検索</button></div>'+WS.res.map(function(r,i){return'<div class=axr><span>'+esc(r.display_name).slice(0,40)+'</span><button class=axb data-x=wsadd data-i='+i+'>追加</button></div>'}).join("")+'</div>';
  s+='<div class=axc><h3>ルート周辺の天気（到着時刻別） '+tag("live","Open-Meteo")+'</h3>'+(R.wx.length?R.wx.map(function(x){return row(x.km.toFixed(0)+"km地点 "+x.t,X.wc(x.code)[1]+" "+Math.round(x.tp)+"° 雨"+x.pp+"% 風"+Math.round(x.ws))}).join(""):'<div class=axs>解析後に表示</div>')+"</div>";
- s+='<div class=axc><h3>IC・JCT・出口 '+tag("live","OSRM/OSM")+'</h3>'+(R.exits.length||R.ic.length?(R.exits.slice(0,8).map(function(e){return row(e.km.toFixed(1)+"km",esc(e.t))}).join("")+R.ic.slice(0,10).map(function(e){return row(e.km.toFixed(0)+"km",esc(e.n)+(e.smart?" [スマートIC]":""))}).join("")):'<div class=axs>解析後に表示（データがない場合は空）</div>')+'</div>';
+ s+='<div class=axc><h3>IC・JCT・出口 '+tag("live",R.src==="main"?"ナビのルート":"OSRM/OSM")+'</h3>'+aheadCards()+'</div>';
  s+='<div class=axc><h3>SA・PA／休憩提案 '+tag("live","OSM")+'</h3>'+(R.rest.length?R.rest.map(function(r){return row("約"+Math.round(r.at)+"km付近で休憩",esc(r.s.n))}).join("")+"<hr style='opacity:.2'>":"")+(R.sa.length?R.sa.slice(0,12).map(function(x){return row(x.km.toFixed(0)+"km "+x.k,esc(x.n)+(x.op?" / "+esc(x.op):"")+(x.wc?" / トイレあり":""))}).join(""):'<div class=axs>解析後に表示（OSMに登録がない場合は出ません）</div>')+'</div>';
  s+='<div class=axc><h3>目的地周辺の駐車場 '+tag("live","OSM")+'</h3>'+(R.park?(R.park.length?R.park.slice(0,8).map(function(p){return row(esc(p.n),Math.round(p.dist)+"m "+p.fee+(p.cap?" "+p.cap+"台":""))}).join(""):'<div class=axs>800m以内の登録なし</div>'):'<div class=axs>解析後に表示</div>')+'</div>';
  s+='<div class=axc><h3>データ非対応</h3><div class=axs>渋滞・交通規制・通行料金額は、無料で使える公的な情報源がないため表示しません（架空表示はしません）。</div></div></div>';
@@ -17353,20 +18273,22 @@ var GEN=/^(高速出口|出口|--|)$/;
 function hwTick(){
  var pnl=$("sideWidgetHighway"),box=$("axHwBox"),lst=$("axHwList"),hn=$("hwExitName");if(!pnl||!box||!lst)return;
  if(pnl.classList.contains("hidden")||pnl.offsetParent===null)return;
- box.classList.remove("hidden");
+ var mi=window.__axHwAhead?window.__axHwAhead():null;
+ if(mi&&(mi.n>0||(mi.active&&!mi.failed))){box.classList.add("hidden");return}   /* ナビ本体の高速案内にデータがあれば、そちらを優先(Axionの表示は出さない) */
+ box.classList.remove("hidden");box.style.cssText="background:transparent;border:none";lst.style.cssText="display:flex;flex-direction:column-reverse";
  var now=Date.now(),cp=curKm();
  if(!R.busy&&dest()&&(!R.d||(cp&&cp.off>400)||now-R.at>180000)&&now-HW.last>60000){HW.last=now;analyze()}
- var curRow='<div style="display:flex;align-items:center;gap:8px;padding:8px;border-top:1px solid #2b2f38;color:#fff;font-size:12px;font-weight:700"><span style="width:24px;text-align:center">'+X.ic("car","18")+'</span>現在地</div>',msg=function(t){return'<div style="padding:8px;font-size:11px;color:#94a3b8">'+esc(t)+'</div>'+curRow};
+ var curRow='<div style="display:flex;align-items:center;gap:8px;padding:8px;border-top:1px solid #2b2f38;color:#fff;font-size:12px;font-weight:700"><span style="width:24px;text-align:center">'+X.ic("car","18")+'</span>現在地</div>',msg=function(t){return oldNow()+'<div style="padding:8px;font-size:11px;color:#94a3b8">'+esc(t)+'</div>'};
  if(!dest()){lst.innerHTML=msg("目的地未設定");return}
  if(!R.d||!cp){lst.innerHTML=msg(R.busy?"解析中…":(R.err||"データなし"));return}
  winQuery(cp);
  var arr=(HW.wq&&HW.wq.rid===R.at)?HW.wq.items:[];
- var ahead=arr.filter(function(x){return x.km-cp.km>-0.05}).slice(0,6);
+ var ahead=arr.filter(function(x){return x.km-cp.km>-0.05});
  var nx=ahead.filter(function(x){return x.k!=="P"})[0];HW.name=nx?nx.n:"";
  if(!ahead.length){
-  var ex=R.exits.filter(function(e){return e.km-cp.km>-0.05}).slice(0,4);
-  lst.innerHTML=ex.length?ex.slice().reverse().map(function(e){return hwRow(BG.IC,fmtD(Math.max(0,e.km-cp.km)),e.t)}).join("")+curRow:msg(HW.wq?"この先の出入口データなし":"出入口を取得中…");
- }else lst.innerHTML=ahead.slice().reverse().map(function(x){return hwRow(BG[x.k],fmtD(Math.max(0,x.km-cp.km)),x.n)}).join("")+curRow;
+  var ex=R.exits.filter(function(e){return e.km-cp.km>-0.05});
+  lst.innerHTML=ex.length?oldList(ex.map(function(e){return{km:e.km,kind:"IC",name:e.t}}),cp.km):msg(HW.wq?"この先の出入口データなし":"出入口を取得中…");
+ }else lst.innerHTML=oldList(ahead.map(function(x){return{km:x.km,kind:x.k==="P"?(/SA|サービス/.test(x.n)?"SA":"PA"):x.k,name:x.n}}),cp.km);
  if(hn){
   if(!HW.obs){HW.obs=new MutationObserver(function(){if(HW.name&&GEN.test(hn.textContent.trim())){HW.obs.disconnect();hn.textContent=HW.name;HW.obs.observe(hn,{childList:true,characterData:true,subtree:true})}});HW.obs.observe(hn,{childList:true,characterData:true,subtree:true})}
   if(HW.name&&GEN.test(hn.textContent.trim()))hn.textContent=HW.name;
@@ -18214,123 +19136,45 @@ html.mc #sidePanel:has(#sideWidgetMenu:not(.hidden)){background:#000!important}
 </script>
 <!-- ===== /AXION Premium UI ===== -->
 
-<!-- ===== 外部音楽アプリ連携(Spotify/YouTube Music/Apple Music等の再生中情報を受け取る) ===== -->
 <script>
+/* 曲がる場所のルートマーカー: 画面から見えなくなったら地図から消す(見える所に戻ったらまた出す) */
 (function(){
- var E={d:null,t:0},busy=0,$=function(i){return document.getElementById(i)};
- function fmt(s){s=Math.max(0,Math.floor(s||0));return Math.floor(s/60)+':'+('0'+s%60).slice(-2)}
- function pos(){var d=E.d,p=d.pos||0;if(d.playing)p+=(Date.now()-E.t)/1000;if(d.dur>0&&p>d.dur)p=d.dur;return p}
- function st(el,v){if(el&&el.textContent!==v)el.textContent=v}
- function apply(){
-  var d=E.d;if(!d)return;
-  st($('musicTitleMain'),d.title||'タイトル不明');
-  st($('musicArtistMain'),d.artist||d.album||'アーティスト不明');
-  var sp=document.querySelectorAll('#musicTitleBlock span');if(sp.length)st(sp[sp.length-1],d.title||'');
-  var b=$('axExtSrc'),ar=$('musicArtistMain');
-  if(!b&&ar){b=document.createElement('div');b.id='axExtSrc';b.style.cssText='font-size:10px;color:#22d3ee;margin-top:2px';ar.parentNode.appendChild(b)}
-  st(b,'♪ '+(d.app||'外部アプリ')+(d.album?' ・ '+d.album:''));
-  var cv=document.querySelector('#musicTitleBlock .bg-slate-900');
-  if(cv){var a=/^(data:image\/|https:)/.test(d.art||'')?d.art:'',bg=a?'url("'+a.replace(/["\\\n\r]/g,'')+'")':'';
-   if(!!cv.style.backgroundImage!==!!bg||cv.__ax!==bg){cv.__ax=bg;cv.style.backgroundImage=bg;cv.style.backgroundSize='cover';cv.style.backgroundPosition='center'}
-   Array.prototype.forEach.call(cv.children,function(c){var v=a?'hidden':'';if(c.style.visibility!==v)c.style.visibility=v})}
-  var pi=document.querySelector('#playBtn i'),cl='fa-solid '+(d.playing?'fa-pause':'fa-play');if(pi&&pi.className!==cl)pi.className=cl;
-  var pr=$('audioProgress');if(pr&&document.activeElement!==pr){pr.max=d.dur>0?Math.floor(d.dur):100;pr.value=Math.floor(pos())}
-  var ts=document.querySelectorAll('#sideWidgetMusic .font-mono span');if(ts.length>1){st(ts[0],fmt(pos()));st(ts[1],d.dur>0?fmt(d.dur):'--:--')}
- }
- window.axionNowPlaying=function(d){
-  if(typeof d==='string'){try{d=JSON.parse(d)}catch(e){return}}
-  if(!d||d.gone){E.d=null;var b=$('axExtSrc');if(b)b.remove();return}
-  d.pos=+d.pos||0;d.dur=+d.dur||0;E.d=d;E.t=Date.now();apply();
- };
- var sw=$('sideWidgetMusic');
- if(sw){var ob=new MutationObserver(function(){if(E.d&&!busy){busy=1;apply();ob.takeRecords();busy=0}});
-  ob.observe(sw,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['style','class']})}
- setInterval(function(){if(E.d)apply()},500);
- var map={togglePlayMusic:'play_pause',nextTrack:'next',prevTrack:'prev'};
- Object.keys(map).forEach(function(n){var o=window[n];window[n]=function(){
-  if(E.d&&window.AxionBridge&&AxionBridge.control){try{AxionBridge.control(map[n]);return}catch(e){}}
-  return o&&o.apply(this,arguments)}});
- if(window.AxionBridge){
-  var had=null;
-  setInterval(function(){
-   var ok=false;try{ok=!!AxionBridge.hasAccess()}catch(e){}
-   var btn=$('axExtPerm');
-   if(!ok&&!btn&&sw){btn=document.createElement('button');btn.id='axExtPerm';btn.type='button';
-    btn.style.cssText='font-size:10px;padding:4px 8px;border-radius:7px;background:#1e293b;border:1px solid #22d3ee;color:#22d3ee;margin:4px 0;cursor:pointer';
-    btn.textContent='音楽アプリ連携を許可する(通知へのアクセス)';btn.onclick=function(){AxionBridge.openSettings()};
-    sw.insertBefore(btn,sw.children[1]||null)}
-   if(ok&&btn)btn.remove();
-   if(ok&&had!==true){try{AxionBridge.sync()}catch(e){}}
-   had=ok},2000);
- }
+  function chk(){
+    try{
+      if(typeof map==='undefined'||!map||typeof mainTurnMarker==='undefined'||!mainTurnMarker) return;
+      var vis=map.getBounds().contains(mainTurnMarker.getLatLng());
+      var on=map.hasLayer(mainTurnMarker);
+      if(vis&&!on) mainTurnMarker.addTo(map);
+      else if(!vis&&on) map.removeLayer(mainTurnMarker);
+    }catch(e){}
+  }
+  setInterval(chk,400);
+  var t=setInterval(function(){ try{ if(typeof map!=='undefined'&&map){ map.on('move zoom moveend zoomend resize',chk); clearInterval(t);} }catch(e){} },500);
 })();
 </script>
-<!-- ===== /外部音楽アプリ連携 ===== -->
 
-<!-- ===== Spotify連携(Web API・読み取り専用) ===== -->
+<style id="hwColorStyle">
+/* 高速道路パネルは今まで画面ごと白黒だったので、「この先」の部分(出口カード・IC/JCT一覧・帯)だけ色つきに戻す */
+html #sideWidgetHighway{filter:none!important}
+html #sideWidgetHighway > div:first-child{filter:grayscale(1)}
+html #sideWidgetHighway #hwList [class*="bg-green-700"],html #sideWidgetHighway #axHwList [class*="bg-green-700"]{background:linear-gradient(135deg,#075e38,#00a35c)!important;border-color:#8be0b3!important}
+html #sideWidgetHighway #hwList .bg-purple-200,html #sideWidgetHighway #axHwList .bg-purple-200{background:#e9d5ff!important;color:#581c87!important}
+html #sideWidgetHighway #hwList .bg-amber-200,html #sideWidgetHighway #axHwList .bg-amber-200{background:#fde68a!important;color:#78350f!important}
+html #sideWidgetHighway #hwList .bg-sky-200,html #sideWidgetHighway #axHwList .bg-sky-200{background:#bae6fd!important;color:#0c4a6e!important}
+html #sideWidgetHighway #hwList .bg-white,html #sideWidgetHighway #axHwList .bg-white{background:#fff!important;color:#166534!important}
+#signHud.ovhide{display:none!important}
+</style>
 <script>
+/* 看板は地図の画面だけ。設定などの全画面(や全画面のウィンドウ)を開いている間は消す */
 (function(){
- var K='axSpoCid',T='axSpoTok',V='axSpoVer',on=false,$=function(i){return document.getElementById(i)},RU=location.origin+location.pathname;
- function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);if(v===null)localStorage.removeItem(k);else localStorage.setItem(k,v)}catch(e){return null}}
- function rnd(n){var a=new Uint8Array(n),c='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';crypto.getRandomValues(a);return Array.from(a,function(x){return c[x%c.length]}).join('')}
- async function chal(v){var h=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(v));return btoa(String.fromCharCode.apply(null,new Uint8Array(h))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
- function msg(t){var s=$('axSpoMsg');if(s)s.textContent=t||''}
- function lab(){var b=$('axSpoBtn');if(b)b.textContent=ls(T)?'Spotify連携中 ✓':'Spotify連携'}
- async function login(){
-  var cid=(($('axSpoCid')||{}).value||'').trim();if(!cid){msg('Client IDを入れてね');return}
-  if(!window.crypto||!crypto.subtle){msg('https(GitHub Pages/Netlify)で開いた時だけ使えるよ');return}
-  ls(K,cid);var v=rnd(64),st=rnd(16);ls(V,v+'|'+st);
-  location.href='https://accounts.spotify.com/authorize?'+new URLSearchParams({client_id:cid,response_type:'code',redirect_uri:RU,scope:'user-read-currently-playing user-read-playback-state',code_challenge_method:'S256',code_challenge:await chal(v),state:st});
- }
- async function tok(body){
-  var r=await fetch('https://accounts.spotify.com/api/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(body)});
-  if(!r.ok)throw new Error('token '+r.status);
-  var j=await r.json(),o=JSON.parse(ls(T)||'{}');j.exp=Date.now()+j.expires_in*1000-60000;if(!j.refresh_token)j.refresh_token=o.refresh_token;ls(T,JSON.stringify(j));lab();return j;
- }
- function logout(){ls(T,null);ls(V,null);if(on){on=false;window.axionNowPlaying&&axionNowPlaying({gone:true})}lab();msg('解除したよ')}
- async function back(){
-  var q=new URLSearchParams(location.search),c=q.get('code');if(!c&&!q.get('error'))return;
-  var s=(ls(V)||'').split('|');history.replaceState(null,'',RU);
-  if(q.get('error')||!s[0]||q.get('state')!==s[1]){msg('連携できなかったよ');return}
-  try{await tok({grant_type:'authorization_code',code:c,redirect_uri:RU,client_id:ls(K),code_verifier:s[0]});ls(V,null);msg('連携できたよ!')}catch(e){msg('連携に失敗(Redirect URIを確認してね)')}
- }
- function gone(){if(on){on=false;axionNowPlaying({gone:true})}}
- async function poll(){
-  if(document.hidden||!window.axionNowPlaying)return;
-  var o=JSON.parse(ls(T)||'null');if(!o)return;
-  try{
-   if(Date.now()>o.exp)o=await tok({grant_type:'refresh_token',refresh_token:o.refresh_token,client_id:ls(K)});
-   var r=await fetch('https://api.spotify.com/v1/me/player/currently-playing?additional_types=track,episode',{headers:{Authorization:'Bearer '+o.access_token}});
-   if(r.status===204){gone();return}
-   if(r.status===401||r.status===403){msg('許可が切れたよ。もう一度連携してね');return}
-   if(!r.ok)return;
-   var j=await r.json(),it=j.item;if(!it){gone();return}
-   var al=it.album||it.show||{},im=al.images||[];
-   on=true;axionNowPlaying({app:'Spotify',title:it.name,artist:it.artists?it.artists.map(function(a){return a.name}).join(', '):(it.show&&it.show.publisher)||'',album:al.name||'',art:(im[1]||im[0]||{}).url||'',playing:!!j.is_playing,pos:(j.progress_ms||0)/1000,dur:(it.duration_ms||0)/1000});
-  }catch(e){}
- }
- function ui(){
-  var sw=$('sideWidgetMusic');if(!sw||$('axSpo'))return;
-  var d=document.createElement('div');d.id='axSpo';d.style.cssText='margin:4px 0;font-size:10px;color:#cbd5e1';
-  var bs='font-size:10px;padding:4px 8px;border-radius:7px;background:#1e293b;border:1px solid #334155;color:#cbd5e1;cursor:pointer';
-  d.innerHTML='<button type=button id=axSpoBtn style="'+bs+';border-color:#22d3ee;color:#22d3ee"></button>'+
-   '<div id=axSpoBox style="display:none;margin-top:4px;padding:6px;border:1px solid #334155;border-radius:8px;background:#0f172a">'+
-   '<div>1. Spotify for Developersでアプリを作り、下のURLをRedirect URIに登録</div>'+
-   '<input id=axSpoRu readonly style="width:100%;margin:3px 0;padding:3px;background:#1e293b;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:10px">'+
-   '<div>2. そのアプリのClient IDを入力</div>'+
-   '<input id=axSpoCid autocomplete=off placeholder="Client ID" style="width:100%;margin:3px 0;padding:3px;background:#1e293b;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:10px">'+
-   '<button type=button id=axSpoGo style="'+bs+'">連携する</button> <button type=button id=axSpoOut style="'+bs+'">解除</button>'+
-   '<div id=axSpoMsg style="margin-top:3px;color:#fbbf24"></div></div>';
-  sw.insertBefore(d,sw.children[1]||null);
-  $('axSpoRu').value=RU;$('axSpoCid').value=ls(K)||'';lab();
-  $('axSpoRu').onfocus=function(){this.select()};
-  $('axSpoBtn').onclick=function(){var b=$('axSpoBox');b.style.display=b.style.display==='none'?'block':'none'};
-  $('axSpoGo').onclick=login;$('axSpoOut').onclick=logout;
- }
- back();ui();setInterval(ui,1500);setInterval(poll,5000);setTimeout(poll,1500);
+  var IDS=['settingsModal','fullMeterOverlay','keyIgnitionOverlay','threeDGuidanceOverlay','fullSearchOverlay','parkingCameraOverlay','autoParkOverlay','minimalConfirmModal','registerPlaceModal','tripLogModal','placeIconModal'];
+  function open(){
+    for(var i=0;i<IDS.length;i++){ var e=document.getElementById(IDS[i]); if(e&&!e.classList.contains('hidden')&&e.offsetParent!==null||(e&&!e.classList.contains('hidden')&&getComputedStyle(e).position==='fixed')) return true; }
+    return false;
+  }
+  setInterval(function(){ var h=document.getElementById('signHud'); if(h) h.classList.toggle('ovhide',open()); },150);
 })();
 </script>
-<!-- ===== /Spotify連携 ===== -->
 
 </body>
 </html>
