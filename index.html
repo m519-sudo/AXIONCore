@@ -1232,6 +1232,9 @@ ETC
             <button onclick="toggleSidePanel('quickZoom')" class="bg-slate-900 hover:bg-slate-800 active:scale-95 border border-slate-700 rounded-lg py-2 flex flex-col items-center gap-1 text-slate-200">
               <i class="fa-solid fa-magnifying-glass-plus text-cyan-400"></i><span class="text-[10px] font-bold">地図の縮尺</span>
             </button>
+            <button onclick="quickToggleRain()" class="bg-slate-900 hover:bg-slate-800 active:scale-95 border border-slate-700 rounded-lg py-2 flex flex-col items-center gap-1 text-slate-200 col-span-2">
+              <i class="fa-solid fa-cloud-showers-heavy text-cyan-400"></i><span id="quickRainLabel" class="text-[10px] font-bold">雨雲レーダー</span>
+            </button>
             <button onclick="toggleSidePanel('quickRoad')" class="bg-slate-900 hover:bg-slate-800 active:scale-95 border border-slate-700 rounded-lg py-2 flex flex-col items-center gap-1 text-slate-200 col-span-2">
               <i class="fa-solid fa-road text-cyan-400"></i><span class="text-[10px] font-bold">道路切換(高速/下道)</span>
             </button>
@@ -12374,6 +12377,7 @@ function illTollNear(p) {   // 次が料金所(有料道路に入る・名前に
           distance: steps[i].distance,
           maneuver: nx.maneuver,
           roadName: jpOnlyName(nx.name),
+          lanes: (typeof laneFromSteps === 'function') ? laneFromSteps(steps, i) : null,   // 曲がり角の車線案内(OSRM/Mapboxのlanes)
           stepIndex: i,    // 曲がり角の拡大表示で、手前・先のstepの形を取り出すのに使う
           onHighway: !!hwFlags[i],   // いま走っている道が高速道路か(1km先案内は高速道路だけ)
           dests: jpOnlyName(String(nx.destinations || '').replace(/,\s*/g, '、')),   // 「京都・大阪方面」の方面名
@@ -18723,7 +18727,7 @@ V.MEDIA=function(){
  '<input type=range id=axSeek min=0 max=100 value=0 style="width:100%;margin-top:10px"><div class=axs id=axTm>0:00 / 0:00</div><div class=axrow2><button class=axb data-x=mprev>[[prev]]</button><button class=axb data-x=mtog>'+(playing?"[[pause]]":"[[play]]")+'</button><button class=axb data-x=mnext>[[next]]</button><button class="axb '+(M.shuf?"":"g")+'" data-x=mshuf>[[shuffle]]</button><button class="axb '+(M.rep==="off"?"g":"")+'" data-x=mrep>'+(M.rep==="one"?"[[repeat1]]":"[[repeat]]")+'</button><button class="axb '+(q&&M.fav[q.id]?"":"g")+'" data-x=mfavq>[[star]]</button></div>音量 <input type=range min=0 max=100 value='+S.vol+' id=axVol></div>'+
  '<div class=axc><h3>ライブラリ ('+M.lib.length+'曲)</h3><div class=axrow2><select id=axSel data-x=msel><option value=ALL>すべて</option><option value=FAV'+(M.sel==="FAV"?" selected":"")+'>お気に入り</option>'+pl.map(function(n){return'<option'+(M.sel===n?" selected":"")+' value="'+esc(n)+'">'+esc(n)+'</option>'}).join("")+'</select><button class="axb g" data-x=mnewpl>＋プレイリスト</button>'+(M.pl[M.sel]?'<button class="axb g" data-x=mdelpl>削除</button>':"")+'</div><input type=file accept="audio/*" multiple id=axUp style="margin:8px 0"><div class=axs>追加した曲は端末内(IndexedDB)に保存され、再起動後も残ります。</div>'+
  (list().map(function(t){return'<div class=axr><span style="min-width:0;overflow:hidden;text-overflow:ellipsis">'+(M.fav[t.id]?"[[starf]] ":"")+esc(t.title||t.name)+'<br><span class=axs>'+esc(t.artist||"")+'</span></span><span style="white-space:nowrap"><button class=axb data-x=mplay data-id="'+t.id+'">[[play]]</button><button class="axb g" data-x=mfav data-id="'+t.id+'">[[star]]</button><button class="axb g" data-x=maddpl data-id="'+t.id+'">＋</button><button class="axb g" data-x=mdel data-id="'+t.id+'">[[trash]]</button></span></div>'}).join("")||'<div class=axs>'+(M.ready?"曲がありません。ファイルを追加してください":"読み込み中…")+'</div>')+'</div>'+
- '<div class=axc><h3>再生キュー</h3>'+(Q.map(function(x,i){return'<div class=axr data-q='+i+'><span>'+(q&&x.id===q.id?"[[play]] ":"")+esc(x.title||x.name)+"</span></div>"}).join("")||'<div class=axs>空</div>')+'</div><div class=axc><h3>再生履歴</h3>'+(S.hist.slice(0,10).map(function(h){return row(new Date(h.t).toLocaleTimeString("ja-JP").slice(0,5),esc(h.n))}).join("")||'<div class=axs>なし</div>')+'</div><div class=axc><h3>出力デバイス</h3><div class=axs>'+esc(M.out||"未取得")+'</div><button class="axb g" data-x=mout>確認</button><div class=axs>外部ストリーミング(Spotify等)はブラウザから制御できないため非対応です。</div></div></div>';
+ '<div class=axc><h3>再生キュー</h3>'+(Q.map(function(x,i){return'<div class=axr data-q='+i+'><span>'+(q&&x.id===q.id?"[[play]] ":"")+esc(x.title||x.name)+"</span></div>"}).join("")||'<div class=axs>空</div>')+'</div><div class=axc><h3>再生履歴</h3>'+(S.hist.slice(0,10).map(function(h){return row(new Date(h.t).toLocaleTimeString("ja-JP").slice(0,5),esc(h.n))}).join("")||'<div class=axs>なし</div>')+'</div><div class=axc><h3>出力デバイス</h3><div class=axs>'+esc(M.out||"未取得")+'</div><button class="axb g" data-x=mout>確認</button><div class=axs>外部ストリーミング(Spotify等)の操作はブラウザからはできへんけど、再生中の曲の表示はLast.fm連携でできるで。</div></div></div>';
  setTimeout(function(){var u=$("axUp");if(u)u.onchange=function(){addFiles(u.files)};var sk=$("axSeek");if(sk){sk.oninput=function(){au.currentTime=+sk.value};au.ontimeupdate()}},0);
  return s};
 /* ===== 7. メニュー連動・設定反映 ===== */
@@ -18817,6 +18821,54 @@ function embedSet(info){host.innerHTML=info?'<iframe src="'+info.src+'" style="w
 setInterval(function(){host.style.height=(EMB.h&&X.cur()==="MEDIA"&&X.root.classList.contains("vis"))?Math.min(EMB.h,Math.round(innerHeight*0.42))+"px":"0px"},400);
 var SV=[["Spotify","https://open.spotify.com/"],["YouTube Music","https://music.youtube.com/"],["Apple Music","https://music.apple.com/jp/"],["Amazon Music","https://music.amazon.co.jp/"],["LINE MUSIC","https://music.line.me/"]];
 var TG={"J-POP":"j-pop","ロック":"rock","ジャズ":"jazz","クラシック":"classical","ニュース":"news","アニメ":"anime"};
+/* ===== Last.fm 連携: Spotify等で再生中の曲を表示 ===== */
+var LF={user:"",key:"",on:false,tr:null,err:"",sig:"",busy:false};
+try{var _lf=JSON.parse(localStorage.getItem("axion_lastfm")||"{}");LF.user=_lf.user||"";LF.key=_lf.key||"";LF.on=!!(LF.user&&LF.key&&_lf.on)}catch(e){}
+function lfSave(){try{localStorage.setItem("axion_lastfm",JSON.stringify({user:LF.user,key:LF.key,on:LF.on}))}catch(_){}}
+function lfErr(e){var m=String(e&&e.message||e);
+ if(/^LF17/.test(m))return"Last.fmのプライバシー設定で「最近の再生履歴を非表示」をオフにしてな";
+ if(/^LF6/.test(m)||m==="404")return"そのユーザー名がLast.fmに見つからへん";
+ if(/^LF10/.test(m)||/^LF26/.test(m)||m==="403")return"APIキーが違うみたい（コピペし直してみて）";
+ if(/^LF29/.test(m)||m==="429")return"問い合わせ多すぎ。ちょっと待ってな";
+ if(/Failed to fetch|NetworkError|Load failed/i.test(m))return"通信できへん（オフラインかも）";
+ return"取得エラー: "+m}
+function lfPoll(){
+ if(!LF.on||LF.busy)return;LF.busy=true;
+ jget("https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&limit=1&format=json&user="+encodeURIComponent(LF.user)+"&api_key="+encodeURIComponent(LF.key)).then(function(d){
+  if(d&&d.error)throw new Error("LF"+d.error);
+  var a=d&&d.recenttracks&&d.recenttracks.track;if(a&&!Array.isArray(a))a=[a];
+  var t=a&&a[0],r=null;
+  if(t){var im=(t.image||[]).filter(function(x){return x["#text"]&&!/2a96cbd8b46e442fc41c2b86b821562f/.test(x["#text"])});
+   r={title:t.name||"",artist:(t.artist&&(t.artist["#text"]||t.artist.name))||"",album:(t.album&&t.album["#text"])||"",art:im.length?im[im.length-1]["#text"]:"",playing:!!(t["@attr"]&&t["@attr"].nowplaying==="true")}}
+  var sig=r?[r.title,r.artist,r.playing].join("|"):"none",ch=(sig!==LF.sig||LF.err);
+  LF.err="";LF.tr=r;LF.sig=sig;
+  if(ch){
+   if(r&&r.playing){try{if("mediaSession"in navigator)navigator.mediaSession.metadata=new MediaMetadata({title:r.title,artist:r.artist,album:r.album,artwork:r.art?[{src:r.art}]:[]})}catch(e){}}
+   if(X.cur()==="MEDIA")X.render()}
+ }).catch(function(e){var m=lfErr(e);if(LF.err!==m){LF.err=m;if(X.cur()==="MEDIA")X.render()}}).then(function(){LF.busy=false});
+}
+setInterval(lfPoll,8000);setTimeout(lfPoll,1500);
+function lfCard(){
+ var h='<div class=axg style="margin-top:10px"><div class=axc style="grid-column:1/-1"><h3>Last.fm（Spotify等で再生中の曲） '+tag("live","連携")+'</h3>';
+ if(LF.on){var t=LF.tr;
+  h+=t?'<div class=axr style="gap:10px;align-items:center;justify-content:flex-start">'+(t.art?'<img src="'+esc(t.art)+'" alt="" style="width:64px;height:64px;border-radius:8px;object-fit:cover;flex:none">':'')+'<span style="min-width:0"><div style="font-weight:600">'+esc(t.title)+'</div><div class=axs>'+esc(t.artist)+(t.album?' ・ '+esc(t.album):'')+'</div><div class=axs>'+(t.playing?'▶ 再生中':'最後に再生した曲')+'</div></span></div>':'<div class=axs>'+(LF.err?'':'取得中…（曲を再生すると数秒〜数十秒で出るで）')+'</div>';
+  if(LF.err)h+='<div class=axs style="color:#f87171">'+esc(LF.err)+'</div>';
+  h+='<div class=axrow2><button class="axb g" data-x=lfnow>今すぐ更新</button><button class="axb g" data-x=lfoff>連携をやめる</button></div>';
+ }else{
+  h+='<div class=axs>①Last.fmに登録 ②Last.fmの設定でSpotifyと連携 ③last.fm/api/account/create で無料のAPIキーを作る。ユーザー名とAPIキーを入れたら、Spotifyで流れてる曲がここに出るで。</div>'+
+   '<div class=axrow2><input id=axLfU placeholder="Last.fmのユーザー名" value="'+esc(LF.user)+'" autocomplete=off style="flex:1;min-width:120px"></div>'+
+   '<div class=axrow2><input id=axLfK placeholder="APIキー" value="'+esc(LF.key)+'" autocomplete=off style="flex:1;min-width:120px"><button class=axb data-x=lfsave>つなぐ</button></div>'+
+   (LF.err?'<div class=axs style="color:#f87171">'+esc(LF.err)+'</div>':'');
+ }
+ return h+'</div></div>'}
+X.root.addEventListener("click",function(e){
+ var t=e.target.closest("[data-x]");if(!t)return;var a=t.dataset.x;
+ if(a==="lfsave"){var u=($("axLfU")||{}).value||"",k=($("axLfK")||{}).value||"";u=u.trim();k=k.trim();
+  if(!u||!k){LF.err="ユーザー名とAPIキーを両方入れてな";X.render();return}
+  LF.user=u;LF.key=k;LF.on=true;LF.err="";LF.tr=null;LF.sig="";lfSave();X.render();lfPoll()}
+ else if(a==="lfoff"){LF.on=false;LF.tr=null;LF.err="";LF.sig="";lfSave();X.render()}
+ else if(a==="lfnow"){lfPoll()}
+});
 var oldM=V.MEDIA;
 V.MEDIA=function(){
  var h=oldM(),fav=M.fst||[];
@@ -18828,7 +18880,7 @@ V.MEDIA=function(){
  (RA.busy?'<div class=axs>検索中…</div>':"")+(RA.err?'<div class=axs style="color:#f87171">'+esc(RA.err)+'</div>':"")+
  (fav.length?'<h3 style="margin-top:10px">お気に入り局</h3>'+fav.map(function(r,i){return st(r,i,"f")}).join(""):"")+
  (RA.res.length?'<h3 style="margin-top:10px">検索結果</h3>'+RA.res.map(function(r,i){return st(r,i,"r")}).join(""):'<div class=axs>局名かジャンルで検索してください（国内局）。HLS形式はSafari系のみ対応。</div>')+'</div></div>';
- return h+s;
+ return h+lfCard()+s;
 };
 function stOf(t){return t.dataset.src==="f"?M.fst[+t.dataset.i]:RA.res[+t.dataset.i]}
 /* 既存「オーディオ」画面(右パネル)を実際に動く曲プレイヤーにする */
@@ -19683,5 +19735,107 @@ html #sideWidgetHighway #hwList .bg-white,html #sideWidgetHighway #axHwList .bg-
 })();
 </script>
 
+<script>
+/* ============ レーンガイダンス(曲がり角の車線案内) ============ */
+function laneFromSteps(steps, i) {
+  try {
+    const nx = steps[i + 1];
+    const it = nx && nx.intersections && nx.intersections[0];   // 曲がる交差点に入ってくる側の車線
+    if (!it || !it.lanes || !it.lanes.length) return null;
+    return it.lanes.map(l => ({ ind: (l.indications || []).slice(), valid: !!l.valid }));
+  } catch (e) { return null; }
+}
+(function () {
+  let bar = null, sig = '';
+  const ARW = { left: '↰', 'slight left': '↖', 'sharp left': '↙', straight: '↑', right: '↱', 'slight right': '↗', 'sharp right': '↘', uturn: '↶' };
+  function ensure() {
+    if (bar && bar.isConnected) return bar;
+    bar = document.createElement('div'); bar.id = 'axLaneBar';
+    bar.style.cssText = 'position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 58px);transform:translateX(-50%) translateY(-8px);z-index:99990;display:none;pointer-events:none;opacity:0;transition:opacity .25s,transform .25s';
+    document.body.appendChild(bar); return bar;
+  }
+  function est(m) {   // 車線データが無い時の目安(曲がる側の端の車線)
+    if (!m || /^(arrive|depart|roundabout|rotary|roundabout turn)$/.test(m.type || '')) return null;
+    const md = m.modifier || '';
+    if (/left/.test(md) && md !== 'uturn') return [{ ind: [md.replace('sharp ', '').replace('slight ', '') === 'left' ? 'left' : md], valid: true }, { ind: ['straight'], valid: false }, { ind: ['straight'], valid: false }];
+    if (/right/.test(md)) return [{ ind: ['straight'], valid: false }, { ind: ['straight'], valid: false }, { ind: [md.replace('sharp ', '').replace('slight ', '') === 'right' ? 'right' : md], valid: true }];
+    return null;
+  }
+  function hide() { if (!bar || bar.style.display === 'none') return; bar.style.opacity = '0'; bar.style.transform = 'translateX(-50%) translateY(-8px)'; sig = ''; setTimeout(() => { if (bar && bar.style.opacity === '0') bar.style.display = 'none'; }, 300); }
+  function tick() {
+    try {
+      const driving = (typeof isNavigating !== 'undefined' && isNavigating) || (typeof demoTimer !== 'undefined' && demoTimer);
+      const p = (driving && typeof guidancePoints !== 'undefined') ? guidancePoints[guidanceIndex] : null;
+      if (!p || !p.maneuver || p.maneuver.type === 'arrive') return hide();
+      const remain = Math.max(0, guidanceRemaining), lim = p.onHighway ? 1500 : 500;
+      if (!(remain <= lim)) return hide();
+      let lanes = p.lanes, estimated = false;
+      if (!lanes || !lanes.length) { lanes = est(p.maneuver); estimated = !!lanes; }
+      if (!lanes) return hide();
+      const dist = remain >= 1000 ? (remain / 1000).toFixed(1) + 'km' : (Math.max(10, Math.round(remain / 10) * 10)) + 'm';
+      const key = JSON.stringify(lanes) + '|' + dist + '|' + estimated;
+      const el = ensure();
+      if (key !== sig) {
+        sig = key;
+        let h = '<div style="background:#0b3a7a;border:2px solid #e2e8f0;border-radius:12px;padding:5px 8px 6px;box-shadow:0 8px 22px rgba(0,0,0,.55);display:flex;flex-direction:column;align-items:center;gap:3px">'
+          + '<div style="font-size:10px;font-weight:800;color:#bfdbfe;letter-spacing:.04em">' + dist + ' 先　車線案内' + (estimated ? '（目安）' : '') + '</div><div style="display:flex">';
+        lanes.forEach((ln, i) => {
+          const ind = (ln.ind || []).filter(x => x !== 'none');
+          const arr = (ind.length ? ind : ['straight']).map(x => ARW[x] || '↑').join('');
+          const single = ind.length <= 1;
+          h += '<div style="width:' + (single ? 38 : 46) + 'px;height:46px;display:flex;align-items:center;justify-content:center;' + (i ? 'border-left:2px dashed rgba(255,255,255,.55);' : '')
+            + 'font-size:' + (single ? 26 : 17) + 'px;font-weight:900;line-height:1;'
+            + (ln.valid ? 'color:#fff;background:rgba(34,197,94,.5);text-shadow:0 0 6px rgba(255,255,255,.7)' : 'color:#93a8c8;opacity:.5') + '">' + arr + '</div>';
+        });
+        el.innerHTML = h + '</div></div>';
+      }
+      if (el.style.display === 'none') { el.style.display = 'block'; void el.offsetWidth; }
+      el.style.opacity = '1'; el.style.transform = 'translateX(-50%) translateY(0)';
+    } catch (e) {}
+  }
+  setInterval(tick, 400);
+})();
+
+/* ============ 雨雲レーダー(気象庁の高解像度降水ナウキャスト) ============ */
+const RAIN = { on: false, layer: null, url: '', timer: null };
+function rainLabel(t) { const e = document.getElementById('quickRainLabel'); if (e) e.textContent = RAIN.on ? ('雨雲 ON' + (t ? '（' + t + '）' : '')) : '雨雲レーダー'; }
+function rainJst(v) { const m = /^(\d{4})(\d\d)(\d\d)(\d\d)(\d\d)/.exec(String(v || '')); if (!m) return ''; const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) + 9 * 3600e3); return String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0'); }
+async function rainTimes() {
+  try {
+    const r = await fetch('https://www.jma.go.jp/bosai/jmatile/data/nowc/targetTimes_N1.json', { cache: 'no-store' });
+    const a = await r.json();
+    a.sort((x, y) => String(y.validtime).localeCompare(String(x.validtime)));
+    if (a[0] && a[0].basetime && a[0].validtime) return { b: a[0].basetime, v: a[0].validtime };
+  } catch (e) {}
+  const d = new Date(Date.now() - 12 * 60000); d.setUTCMinutes(Math.floor(d.getUTCMinutes() / 5) * 5, 0, 0);   // 一覧が取れない時は、約12分前の観測を推測
+  const p = n => String(n).padStart(2, '0'), t = d.getUTCFullYear() + p(d.getUTCMonth() + 1) + p(d.getUTCDate()) + p(d.getUTCHours()) + p(d.getUTCMinutes()) + '00';
+  return { b: t, v: t };
+}
+async function rainRefresh() {
+  if (!RAIN.on || typeof map === 'undefined' || !map) return;
+  try {
+    const t = await rainTimes();
+    const url = 'https://www.jma.go.jp/bosai/jmatile/data/nowc/' + t.b + '/none/' + t.v + '/surf/hrpns/{z}/{x}/{y}.png';
+    if (!map.getPane('rainPane')) { map.createPane('rainPane'); const pn = map.getPane('rainPane'); pn.style.zIndex = 250; pn.style.pointerEvents = 'none'; }   // 夜の地図の色反転(タイルのフィルター)を受けないよう別の層に置く
+    if (RAIN.url !== url) {
+      const old = RAIN.layer;
+      RAIN.layer = L.tileLayer(url, { pane: 'rainPane', opacity: 0.75, maxNativeZoom: 10, minZoom: 3, maxZoom: 22, attribution: '雨雲: 気象庁' }).addTo(map);
+      RAIN.url = url; if (old) setTimeout(() => { try { map.removeLayer(old); } catch (e) {} }, 1500);
+    }
+    rainLabel(rainJst(t.v));
+  } catch (e) { rainLabel('取得失敗'); }
+}
+function quickToggleRain() {
+  if (typeof map === 'undefined' || !map) return;
+  if (RAIN.on) {
+    RAIN.on = false; clearInterval(RAIN.timer); RAIN.timer = null; RAIN.url = '';
+    if (RAIN.layer) { try { map.removeLayer(RAIN.layer); } catch (e) {} RAIN.layer = null; }
+    rainLabel(); try { localStorage.setItem('shoRainPref', 'off'); } catch (e) {}
+    return;
+  }
+  RAIN.on = true; try { localStorage.setItem('shoRainPref', 'on'); } catch (e) {}
+  rainLabel(); rainRefresh(); clearInterval(RAIN.timer); RAIN.timer = setInterval(rainRefresh, 300000);   // 5分ごとに更新
+}
+</script>
 </body>
 </html>
