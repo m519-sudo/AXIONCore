@@ -20620,7 +20620,7 @@ setInterval(function(){
 },2500);
 
 /* ==================================================================
-   ④ ROUTE EDIT: 経由地の追加・削除・並べ替え / 道(例: 国道23号)を指定して経由
+   ④ ROUTE EDIT: 経由地の追加・削除・並べ替え / 道(例: 東名高速道路)を指定して経由
       経由地は既存のしくみ(waypointsList / addWaypoint / applyWaypointChange)をそのまま使う
 ================================================================== */
 var ED={q:"",busy:false,res:null,err:"",msg:"",at:0};
@@ -20640,13 +20640,13 @@ function editHtml(){
   });
   if(list.length)h+='<div style="margin-top:8px"><button class="xfB s" data-ed="clear">すべて外す</button></div>';
   h+='<div class="xfS" style="margin-top:8px">変更すると、ナビが新しい経由地でルートを探し直します。</div></div>';
-  h+='<div class="xfC"><h3>道を指定して経由</h3><div style="display:flex;gap:6px"><input id="axtEdQ" class="xfIn" placeholder="例: 国道23号 / 伊勢湾岸道" value="'+esc(ED.q)+'"><button class="xfB p" data-ed="search"'+(ED.busy?" disabled":"")+'>探す</button></div>'
+  h+='<div class="xfC"><h3>道を指定して経由</h3><div style="display:flex;gap:6px"><input id="axtEdQ" class="xfIn" placeholder="例: 東名高速道路 / 阪神高速" value="'+esc(ED.q)+'"><button class="xfB p" data-ed="search"'+(ED.busy?" disabled":"")+'>探す</button></div>'
    +'<div class="xfS" style="margin-top:6px">ルートの近く(約8km以内。ルートが無ければ現在地の周り)にある、その道の地点を探します。経由地にすると、その地点を必ず通るルートになります。道に沿って走りたい時は、道の2か所に経由地を入れてください。</div></div>';
   if(ED.busy)h+='<div class="xfC"><div class="xfS">道を探しています…</div></div>';
   if(ED.err)h+='<div class="xfC xfDia err"><b>'+tag("r","エラー")+'探せませんでした</b><div class="why">'+esc(ED.err)+'</div></div>';
   if(ED.res){
     h+='<div class="xfC"><h3>見つかった地点 '+ED.res.items.length+'件</h3><div class="xfS">'+TG+'情報源: OpenStreetMap(Overpass API / '+esc(ED.res.host)+')・'+hhmm(ED.res.at)+'に取得。距離は'+(ED.res.byRoute?"いまのルート":"現在地")+'からの直線距離です。</div></div>';
-    if(!ED.res.items.length)h+='<div class="xfC"><div class="xfS">その名前の道は、この近くで見つかりませんでした。「国道23号」「23号線」のように入れ直してみてください。</div></div>';
+    if(!ED.res.items.length)h+='<div class="xfC"><div class="xfS">その名前の道は、この近くで見つかりませんでした。「東名高速道路」「阪神高速」のように入れ直してみてください。</div></div>';
     ED.res.items.forEach(function(o,i){
       h+='<div class="xfC"><div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><b style="font-size:15px">'+esc(o.name)+'</b><span style="font-weight:800">'+esc(fmtD(o.d))+'</span></div>'
        +'<div class="xfS">'+(o.d<150?"いまのルートがほぼ通っている道です":(ED.res.byRoute?"ルートから":"現在地から")+"約"+esc(fmtD(o.d))+"離れています")+' / '+tag("g","OSM")+'</div>'
