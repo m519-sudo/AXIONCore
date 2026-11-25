@@ -20904,7 +20904,7 @@ window.SHOTOOLS={open:T.open,close:T.close,diag:diagRun,_PK:PK,_DG:DG,routeHtml:
   function tx(m){
     m.from='car';m.mid=rid();m.ts=Date.now();seen[m.mid]=1;
     try{if(bc)bc.postMessage(m)}catch(e){}
-    try{if(window.AKP&&AKP.open())AKP.send(m)}catch(e){}
+    try{if(window.AKR)AKR.send(m)}catch(e){}
     try{localStorage.setItem(SK,JSON.stringify(m))}catch(e){}
   }
   function note(t){
@@ -20944,39 +20944,58 @@ window.SHOTOOLS={open:T.open,close:T.close,diag:diagRun,_PK:PK,_DG:DG,routeHtml:
 </script>
 
 <script id="axionKeyPair">
-var AKP=(function(){
-var ICE=[{urls:'stun:stun.l.google.com:19302'}],pc=null,dc=null,onmsg=null,onopen=null;
-function b64(h){var a=h.split(':').map(function(x){return parseInt(x,16)});return btoa(String.fromCharCode.apply(null,a)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
-function unb64(s){s=s.replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';return Array.prototype.map.call(atob(s),function(c){return('0'+c.charCodeAt(0).toString(16)).slice(-2).toUpperCase()}).join(':')}
-function pack(sdp){
- var u=/a=ice-ufrag:(\S+)/.exec(sdp)[1],p=/a=ice-pwd:(\S+)/.exec(sdp)[1],f=/a=fingerprint:sha-256 (\S+)/i.exec(sdp)[1],cs=[];
- sdp.split(/\r?\n/).forEach(function(l){var m=/^a=candidate:\S+ \d+ udp \d+ (\S+) (\d+) typ (\w+)/.exec(l);if(m&&m[1].indexOf(':')<0)cs.push({a:m[1]+':'+m[2],r:m[3]==='srflx'?0:(/\.local$/.test(m[1])?2:1)})});
- cs.sort(function(a,b){return a.r-b.r});
- var out='AK1|'+u+'|'+p+'|'+b64(f),n=0;
- cs.forEach(function(c){var t=out+(n?',':'|')+c.a;if(t.length<=200){out=t;n++}});
- return out}
-function unpack(code,setup){
- var p=code.trim().split('|');if(p[0]!=='AK1'||p.length<4)throw new Error('bad');
- var s='v=0\r\no=- 1 2 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE 0\r\nm=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\nc=IN IP4 0.0.0.0\r\na=ice-ufrag:'+p[1]+'\r\na=ice-pwd:'+p[2]+'\r\na=fingerprint:sha-256 '+unb64(p[3])+'\r\na=setup:'+setup+'\r\na=mid:0\r\na=sctp-port:5000\r\na=max-message-size:262144\r\n';
- (p[4]||'').split(',').filter(Boolean).forEach(function(c,i){var k=c.lastIndexOf(':');s+='a=candidate:'+(i+1)+' 1 udp '+(2113937151-i)+' '+c.slice(0,k)+' '+c.slice(k+1)+' typ host\r\n'});
- return s+'a=end-of-candidates\r\n'}
-function gather(c){return new Promise(function(res){if(c.iceGatheringState==='complete')return res();var t=setTimeout(res,3500);c.addEventListener('icegatheringstatechange',function(){if(c.iceGatheringState==='complete'){clearTimeout(t);res()}})})}
-function bind(ch){dc=ch;ch.onopen=function(){if(onopen)onopen()};ch.onmessage=function(e){try{if(onmsg)onmsg(JSON.parse(e.data))}catch(x){}}}
-function mk(){if(pc){try{pc.close()}catch(e){}}dc=null;pc=new RTCPeerConnection({iceServers:ICE});return pc}
+var AKR=(function(){
+var K='axionkey.relay',L=null,es=null,onmsg=null,seen={},lastT={},enc=new TextEncoder();
+try{L=JSON.parse(localStorage.getItem(K)||'null')}catch(e){}
+function rnd(n){var a=new Uint8Array(n),s='',c='abcdefghjkmnpqrstuvwxyz23456789';crypto.getRandomValues(a);for(var i=0;i<n;i++)s+=c[a[i]%c.length];return s}
+function save(){try{if(L)localStorage.setItem(K,JSON.stringify(L));else localStorage.removeItem(K)}catch(e){}}
+async function sign(txt){var k=await crypto.subtle.importKey('raw',enc.encode(L.s),{name:'HMAC',hash:'SHA-256'},false,['sign']),b=new Uint8Array(await crypto.subtle.sign('HMAC',k,enc.encode(txt))),h='';for(var i=0;i<b.length;i++)h+=('0'+b[i].toString(16)).slice(-2);return h}
+function url(p){return 'https://ntfy.sh/'+L.t+(p||'')}
+function listen(){
+ if(es){es.close();es=null}
+ if(!L||!window.EventSource)return;
+ es=new EventSource(url('/sse'));
+ es.onmessage=async function(e){
+  try{var d=JSON.parse(e.data);if(d.event!=='message')return;
+   var v=JSON.parse(d.message);
+   if(!v||!v.p||!v.g||seen[v.i]||Math.abs(Date.now()-v.ts)>90000)return;
+   if(await sign(v.p+'|'+v.ts+'|'+v.i)!==v.g)return;
+   seen[v.i]=1;var m=JSON.parse(v.p);if(!m.mid)m.mid=v.i;
+   if(onmsg)onmsg(m)}catch(x){}}
+}
+var S={v:null,cb:null,err:null,det:null,st:null,tm:null,off:true,ci:0,
+ halt:function(){S.off=true;clearInterval(S.tm);if(S.st){S.st.getTracks().forEach(function(t){t.stop()});S.st=null}},
+ go:async function(idx){
+  S.halt();S.off=false;var gm=function(c){return navigator.mediaDevices.getUserMedia({video:c})};
+  try{
+   var s=await gm({facingMode:'environment'});
+   var devs=(await navigator.mediaDevices.enumerateDevices()).filter(function(d){return d.kind==='videoinput'});
+   var back=devs.filter(function(d){return !/front|user/i.test(d.label)&&!/ultra|wide/i.test(d.label)});
+   if(!back.length)back=devs.filter(function(d){return !/front|user/i.test(d.label)});
+   if(back.length){S.ci=idx%back.length;var cur=s.getVideoTracks()[0].getSettings().deviceId;
+    if(back[S.ci].deviceId!==cur){s.getTracks().forEach(function(t){t.stop()});s=await gm({deviceId:{exact:back[S.ci].deviceId},width:{ideal:1280},height:{ideal:720}})}}
+   S.st=s;S.v.srcObject=s;await S.v.play();
+   S.tm=setInterval(function(){if(S.off)return;S.det.detect(S.v).then(function(r){if(r.length&&/^AK2\|/.test(r[0].rawValue)){S.halt();S.cb(r[0].rawValue)}}).catch(function(){})},300);
+  }catch(e){S.err('カメラを使えませんでした')}
+ }};
+if(L)listen();
 return{
- open:function(){return !!dc&&dc.readyState==='open'},
- send:function(m){dc.send(JSON.stringify(m))},
- on:function(a,b){onmsg=a;onopen=b},
- offer:async function(){var c=mk();bind(c.createDataChannel('key'));await c.setLocalDescription(await c.createOffer());await gather(c);return pack(c.localDescription.sdp)},
- accept:async function(code){var c=mk();c.ondatachannel=function(e){bind(e.channel)};await c.setRemoteDescription({type:'offer',sdp:unpack(code,'actpass')});await c.setLocalDescription(await c.createAnswer());await gather(c);return pack(c.localDescription.sdp)},
- finish:async function(code){await pc.setRemoteDescription({type:'answer',sdp:unpack(code,'active')})},
+ linked:function(){return !!L},
+ code:function(){return L?'AK2|'+L.t+'|'+L.s:''},
+ create:function(){L={t:'ak'+rnd(18),s:rnd(24)};save();listen()},
+ join:function(code){var p=String(code).trim().split('|');if(p[0]!=='AK2'||p.length!==3||!/^[a-z0-9]{8,40}$/.test(p[1])||!/^[a-z0-9]{16,40}$/.test(p[2]))throw new Error('bad');L={t:p[1],s:p[2]};save();listen()},
+ clear:function(){if(es){es.close();es=null}L=null;save()},
+ on:function(f){onmsg=f},
+ send:async function(m){
+  if(!L||!window.crypto||!crypto.subtle)return;
+  if(m.t==='hello'||m.t==='veh'){var n=Date.now();if(lastT[m.t]&&n-lastT[m.t]<600000)return;lastT[m.t]=n}
+  var p=JSON.stringify(m),ts=Date.now(),i=rnd(10);seen[i]=1;
+  var v={p:p,ts:ts,i:i,g:await sign(p+'|'+ts+'|'+i)};
+  fetch(url(),{method:'POST',body:JSON.stringify(v)}).catch(function(){})},
  scan:function(v,cb,err){
   if(!('BarcodeDetector' in window)){err('このブラウザはQR読み取りに未対応です。コードを貼り付けてください');return function(){}}
-  var st=null,tm=null,off=false,det=new BarcodeDetector({formats:['qr_code']});
-  function stop(){off=true;clearInterval(tm);if(st)st.getTracks().forEach(function(t){t.stop()})}
-  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}).then(function(s){st=s;v.srcObject=s;v.play();
-   tm=setInterval(function(){if(off)return;det.detect(v).then(function(r){if(r.length&&/^AK1\|/.test(r[0].rawValue)){stop();cb(r[0].rawValue)}}).catch(function(){})},300)}).catch(function(){err('カメラを使えませんでした')});
-  return stop}
+  S.v=v;S.cb=cb;S.err=err;S.det=new BarcodeDetector({formats:['qr_code']});S.go(0);return S.halt},
+ next:function(){if(S.v)S.go(S.ci+1)}
 }})();
 var AKQR=(function(){
 var EXP=new Array(512),LOG=new Array(256);
@@ -21043,26 +21062,24 @@ function msg(t){$('axkMsg').textContent=t}
 function css(e,s){e.style.cssText=s;return e}
 function build(){
  o=css(document.createElement('div'),'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.94);color:#eef2f8;font:500 14px/1.6 sans-serif;display:none;overflow:auto;padding:24px;text-align:center');
- o.innerHTML='<div style="max-width:420px;margin:0 auto"><h2 style="margin:0 0 6px;font-size:18px">AXION KEY と連携</h2><p style="color:#7d8aa0;margin:0 0 12px">キーのペアリング画面に出ているQRを読み取ってください</p><video id="axkV" playsinline muted style="width:100%;border-radius:16px;background:#000"></video><div id="axkOut" style="margin:12px 0"></div><input id="axkAns" readonly style="display:none;width:100%;margin-bottom:10px;padding:8px;border-radius:10px;background:#0f1218;color:#eef2f8;border:1px solid #1b2230"><textarea id="axkIn" placeholder="コードを貼り付け（AK1|…）" style="width:100%;height:60px;border-radius:10px;background:#0f1218;color:#eef2f8;border:1px solid #1b2230;padding:8px"></textarea><div style="display:flex;gap:8px;margin-top:10px"><button id="axkGo" style="flex:1;padding:12px;border-radius:12px;background:#2f8cff;color:#fff;font-weight:700;border:0">貼り付けて連携</button><button id="axkX" style="flex:1;padding:12px;border-radius:12px;background:#0f1218;color:#eef2f8;border:1px solid #1b2230">閉じる</button></div><div id="axkMsg" style="margin-top:12px;color:#78b8ff"></div></div>';
+ o.innerHTML='<div style="max-width:420px;margin:0 auto"><h2 style="margin:0 0 6px;font-size:18px">AXION KEY と連携</h2><p style="color:#7d8aa0;margin:0 0 12px">キーのペアリング画面に出ているQRを読み取ってください</p><video id="axkV" playsinline muted style="width:100%;border-radius:16px;background:#000"></video><div id="axkOut" style="margin:12px 0"></div><input id="axkAns" readonly style="display:none;width:100%;margin-bottom:10px;padding:8px;border-radius:10px;background:#0f1218;color:#eef2f8;border:1px solid #1b2230"><textarea id="axkIn" placeholder="コードを貼り付け（AK1|…）" style="width:100%;height:60px;border-radius:10px;background:#0f1218;color:#eef2f8;border:1px solid #1b2230;padding:8px"></textarea><div style="display:flex;gap:8px;margin-top:10px"><button id="axkGo" style="flex:1;padding:12px;border-radius:12px;background:#2f8cff;color:#fff;font-weight:700;border:0">貼り付けて連携</button><button id="axkCam" style="flex:1;padding:12px;border-radius:12px;background:#0f1218;color:#eef2f8;border:1px solid #1b2230">カメラ切替</button><button id="axkX" style="flex:1;padding:12px;border-radius:12px;background:#0f1218;color:#eef2f8;border:1px solid #1b2230">閉じる</button></div><div id="axkMsg" style="margin-top:12px;color:#78b8ff"></div></div>';
  document.body.appendChild(o);
  $('axkGo').onclick=function(){got($('axkIn').value)};
- $('axkX').onclick=close;
+ $('axkX').onclick=close;$('axkCam').onclick=function(){AKR.next()};
 }
 function close(){if(stop){stop();stop=null}if(o)o.style.display='none'}
 function got(code){
- if(stop){stop();stop=null}$('axkV').style.display='none';msg('連携中…');
- AKP.accept(code).then(function(a){
-  try{$('axkOut').innerHTML=AKQR.svg(a,240)}catch(e){$('axkOut').innerHTML=''}
-  $('axkAns').value=a;$('axkAns').style.display='block';
-  msg('キーの「ナビの返事QRを読み取る」で、このQRを読み取ってください')
- }).catch(function(){msg('コードが正しくありません。キーでQRを出し直してください')});
+ if(stop){stop();stop=null}$('axkV').style.display='none';
+ try{AKR.join(code);msg('連携しました。次からは自動でつながります');setTimeout(function(){close();if(window.__akAnnounce)__akAnnounce()},1200)}
+ catch(e){msg('コードが正しくありません。キーでQRを出し直してください')}
 }
 function open(){
- if(!o)build();o.style.display='block';$('axkOut').innerHTML='';$('axkAns').style.display='none';msg('');
- var v=$('axkV');v.style.display='block';stop=AKP.scan(v,got,msg);
+ if(!o)build();o.style.display='block';$('axkOut').innerHTML='';msg(AKR.linked()?'連携済みです。つなぎ直す時は新しいQRを読み取ってください':'');
+ var v=$('axkV');v.style.display='block';stop=AKR.scan(v,got,msg);
 }
 window.AXKEYPAIR={open:open,close:close};
-AKP.on(function(m){if(window.__akRx)__akRx(m)},function(){close();if(window.__akNote)__akNote('AXION KEY：QR連携で接続しました');if(window.__akAnnounce)__akAnnounce()});
+
+AKR.on(function(m){if(window.__akRx)__akRx(m)});
 
 })();
 
