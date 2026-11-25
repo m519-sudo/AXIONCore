@@ -20975,7 +20975,8 @@ var S={v:null,cb:null,err:null,det:null,st:null,tm:null,off:true,ci:0,
    if(back.length){S.ci=idx%back.length;var cur=s.getVideoTracks()[0].getSettings().deviceId;
     if(back[S.ci].deviceId!==cur){s.getTracks().forEach(function(t){t.stop()});s=await gm({deviceId:{exact:back[S.ci].deviceId},width:{ideal:1280},height:{ideal:720}})}}
    S.st=s;S.v.srcObject=s;await S.v.play();
-   S.tm=setInterval(function(){if(S.off)return;S.det.detect(S.v).then(function(r){if(r.length&&/^AK2\|/.test(r[0].rawValue)){S.halt();S.cb(r[0].rawValue)}}).catch(function(){})},300);
+   try{var tr=s.getVideoTracks()[0],cp=tr.getCapabilities?tr.getCapabilities():{};S.zmin=cp.zoom?cp.zoom.min:1;S.zmax=cp.zoom?cp.zoom.max:1;S.zi=0;if(cp.focusMode&&cp.focusMode.indexOf('continuous')>=0)await tr.applyConstraints({advanced:[{focusMode:'continuous'}]})}catch(e){}
+   S.tm=setInterval(function(){if(S.off)return;S.det.detect(S.v).then(function(r){if(r.length&&/AK2(\||\.|%7C)/i.test(r[0].rawValue)){S.halt();S.cb(r[0].rawValue)}}).catch(function(){S.ne=(S.ne||0)+1;if(S.ne===20)S.err('このブラウザでは読み取れません。キーのQRをスマホのカメラアプリで読むか、コピーしたリンクをナビで開いてください')})},150);
   }catch(e){S.err('カメラを使えませんでした')}
  }};
 if(L)listen();
@@ -20983,7 +20984,7 @@ return{
  linked:function(){return !!L},
  code:function(){return L?'AK2|'+L.t+'|'+L.s:''},
  create:function(){L={t:'ak'+rnd(18),s:rnd(24)};save();listen()},
- join:function(code){var p=String(code).trim().split('|');if(p[0]!=='AK2'||p.length!==3||!/^[a-z0-9]{8,40}$/.test(p[1])||!/^[a-z0-9]{16,40}$/.test(p[2]))throw new Error('bad');L={t:p[1],s:p[2]};save();listen()},
+ join:function(code){var x=String(code);try{x=decodeURIComponent(x)}catch(e){}var m=/AK2[|.]([a-z0-9]{8,40})[|.]([a-z0-9]{16,40})/.exec(x);if(!m)throw new Error('bad');L={t:m[1],s:m[2]};save();listen()},
  clear:function(){if(es){es.close();es=null}L=null;save()},
  on:function(f){onmsg=f},
  send:async function(m){
@@ -20995,7 +20996,8 @@ return{
  scan:function(v,cb,err){
   if(!('BarcodeDetector' in window)){err('このブラウザはQR読み取りに未対応です。コードを貼り付けてください');return function(){}}
   S.v=v;S.cb=cb;S.err=err;S.det=new BarcodeDetector({formats:['qr_code']});S.go(0);return S.halt},
- next:function(){if(S.v)S.go(S.ci+1)}
+ next:function(){if(S.v)S.go(S.ci+1)},
+ zoom:function(){var tr=S.st&&S.st.getVideoTracks()[0];if(!tr||!(S.zmax>S.zmin))return '';S.zi=(S.zi+1)%3;var z=Math.min(S.zmax,S.zmin*(1+S.zi));tr.applyConstraints({advanced:[{zoom:z}]}).catch(function(){});return z.toFixed(1)+'倍'}
 }})();
 var AKQR=(function(){
 var EXP=new Array(512),LOG=new Array(256);
@@ -21062,10 +21064,10 @@ function msg(t){$('axkMsg').textContent=t}
 function css(e,s){e.style.cssText=s;return e}
 function build(){
  o=css(document.createElement('div'),'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.94);color:#eef2f8;font:500 14px/1.6 sans-serif;display:none;overflow:auto;padding:24px;text-align:center');
- o.innerHTML='<div style="max-width:420px;margin:0 auto"><h2 style="margin:0 0 6px;font-size:18px">AXION KEY と連携</h2><p style="color:#7d8aa0;margin:0 0 12px">キーのペアリング画面に出ているQRを読み取ってください</p><video id="axkV" playsinline muted style="width:100%;border-radius:16px;background:#000"></video><div id="axkOut" style="margin:12px 0"></div><input id="axkAns" readonly style="display:none;width:100%;margin-bottom:10px;padding:8px;border-radius:10px;background:#0f1218;color:#eef2f8;border:1px solid #1b2230"><textarea id="axkIn" placeholder="コードを貼り付け（AK1|…）" style="width:100%;height:60px;border-radius:10px;background:#0f1218;color:#eef2f8;border:1px solid #1b2230;padding:8px"></textarea><div style="display:flex;gap:8px;margin-top:10px"><button id="axkGo" style="flex:1;padding:12px;border-radius:12px;background:#2f8cff;color:#fff;font-weight:700;border:0">貼り付けて連携</button><button id="axkCam" style="flex:1;padding:12px;border-radius:12px;background:#0f1218;color:#eef2f8;border:1px solid #1b2230">カメラ切替</button><button id="axkX" style="flex:1;padding:12px;border-radius:12px;background:#0f1218;color:#eef2f8;border:1px solid #1b2230">閉じる</button></div><div id="axkMsg" style="margin-top:12px;color:#78b8ff"></div></div>';
+ o.innerHTML='<div style="max-width:420px;margin:0 auto"><h2 style="margin:0 0 6px;font-size:18px">AXION KEY と連携</h2><p style="color:#7d8aa0;margin:0 0 12px">キーのペアリング画面に出ているQRを読み取ってください</p><video id="axkV" playsinline muted style="width:100%;border-radius:16px;background:#000"></video><div id="axkOut" style="margin:12px 0"></div><input id="axkAns" readonly style="display:none;width:100%;margin-bottom:10px;padding:8px;border-radius:10px;background:#0f1218;color:#eef2f8;border:1px solid #1b2230"><textarea id="axkIn" placeholder="コードを貼り付け（AK1|…）" style="width:100%;height:60px;border-radius:10px;background:#0f1218;color:#eef2f8;border:1px solid #1b2230;padding:8px"></textarea><div style="display:flex;gap:8px;margin-top:10px"><button id="axkGo" style="flex:1;padding:12px;border-radius:12px;background:#2f8cff;color:#fff;font-weight:700;border:0">貼り付けて連携</button><button id="axkZoom" style="flex:1;padding:12px;border-radius:12px;background:#0f1218;color:#eef2f8;border:1px solid #1b2230">ズーム</button><button id="axkCam" style="flex:1;padding:12px;border-radius:12px;background:#0f1218;color:#eef2f8;border:1px solid #1b2230">カメラ切替</button><button id="axkX" style="flex:1;padding:12px;border-radius:12px;background:#0f1218;color:#eef2f8;border:1px solid #1b2230">閉じる</button></div><div id="axkMsg" style="margin-top:12px;color:#78b8ff"></div></div>';
  document.body.appendChild(o);
  $('axkGo').onclick=function(){got($('axkIn').value)};
- $('axkX').onclick=close;$('axkCam').onclick=function(){AKR.next()};
+ $('axkX').onclick=close;$('axkCam').onclick=function(){AKR.next()};$('axkZoom').onclick=function(){var z=AKR.zoom();msg(z?'ズーム '+z:'この端末のカメラはズームに未対応です')};
 }
 function close(){if(stop){stop();stop=null}if(o)o.style.display='none'}
 function got(code){
@@ -21078,6 +21080,7 @@ function open(){
  var v=$('axkV');v.style.display='block';stop=AKR.scan(v,got,msg);
 }
 window.AXKEYPAIR={open:open,close:close};
+try{var hh=decodeURIComponent(location.hash||'');if(/AK2[|.]/.test(hh)){AKR.join(hh.replace(/^#/,''));history.replaceState(null,'',location.pathname+location.search);setTimeout(function(){if(window.__akNote)__akNote('AXION KEY：連携しました');if(window.__akAnnounce)__akAnnounce()},1200)}}catch(e){}
 
 AKR.on(function(m){if(window.__akRx)__akRx(m)});
 
