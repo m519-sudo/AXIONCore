@@ -1478,22 +1478,8 @@ ETC
           </div>
 
           <div class="mt-1 border-t border-slate-800 pt-1.5">
-            <div class="text-[11px] text-slate-400 mb-1 font-bold flex items-center justify-between">
-              <span>履歴 / 周辺施設</span>
-              <button id="sidebarDestHistoryClear" onclick="clearDestHistory()" class="text-[9px] text-slate-500 hover:text-red-400 hidden">履歴を消す</button>
-            </div>
+            <div class="text-[11px] text-slate-400 mb-1 font-bold">履歴 / 周辺施設</div>
             <div class="space-y-1 text-xs">
-              <div id="sidebarDestHistoryList" class="space-y-1"></div>
-              <div class="grid grid-cols-4 gap-1 pt-1">
-                <button onclick="quickNearby('コンビニ')" class="bg-slate-800 hover:bg-slate-700 active:scale-95 border border-slate-600 text-slate-200 text-[9px] font-bold py-1 rounded-lg transition"><i class="fa-solid fa-store block text-xs mb-0.5 text-cyan-400"></i>コンビニ</button>
-                <button onclick="quickNearby('ガソリンスタンド')" class="bg-slate-800 hover:bg-slate-700 active:scale-95 border border-slate-600 text-slate-200 text-[9px] font-bold py-1 rounded-lg transition"><i class="fa-solid fa-gas-pump block text-xs mb-0.5 text-cyan-400"></i>ガソリン</button>
-                <button onclick="quickNearby('トイレ')" class="bg-slate-800 hover:bg-slate-700 active:scale-95 border border-slate-600 text-slate-200 text-[9px] font-bold py-1 rounded-lg transition"><i class="fa-solid fa-restroom block text-xs mb-0.5 text-cyan-400"></i>トイレ</button>
-                <button onclick="quickNearby('駐車場')" class="bg-slate-800 hover:bg-slate-700 active:scale-95 border border-slate-600 text-slate-200 text-[9px] font-bold py-1 rounded-lg transition"><i class="fa-solid fa-square-parking block text-xs mb-0.5 text-cyan-400"></i>駐車場</button>
-                <button onclick="quickNearby('食事')" class="bg-slate-800 hover:bg-slate-700 active:scale-95 border border-slate-600 text-slate-200 text-[9px] font-bold py-1 rounded-lg transition"><i class="fa-solid fa-utensils block text-xs mb-0.5 text-cyan-400"></i>食事</button>
-                <button onclick="quickNearby('休憩')" class="bg-slate-800 hover:bg-slate-700 active:scale-95 border border-slate-600 text-slate-200 text-[9px] font-bold py-1 rounded-lg transition"><i class="fa-solid fa-mug-hot block text-xs mb-0.5 text-cyan-400"></i>休憩</button>
-                <button onclick="quickNearby('病院')" class="bg-slate-800 hover:bg-slate-700 active:scale-95 border border-slate-600 text-slate-200 text-[9px] font-bold py-1 rounded-lg transition"><i class="fa-solid fa-hospital block text-xs mb-0.5 text-cyan-400"></i>病院</button>
-                <button onclick="quickNearby('充電')" class="bg-slate-800 hover:bg-slate-700 active:scale-95 border border-slate-600 text-slate-200 text-[9px] font-bold py-1 rounded-lg transition"><i class="fa-solid fa-charging-station block text-xs mb-0.5 text-cyan-400"></i>充電</button>
-              </div>
             </div>
           </div>
         </div>
@@ -9514,51 +9500,6 @@ setWalkMode(mode === 'walk');   // 縦画面(歩行者)モードの入り切り
       if (listEl) listEl.innerHTML = savedHtml + '<div class="text-center text-slate-500 text-[11px] py-2">Enterまたは検索ボタンでさらに検索…</div>';
     }
 
-    /* ============ 目的地の履歴(Root探索メニュー下部) ============ */
-    const DEST_HISTORY_KEY = 'shoNaviDestHistory';
-    const DEST_HISTORY_MAX = 8;
-    function loadDestHistory() {
-      try {
-        const a = JSON.parse(localStorage.getItem(DEST_HISTORY_KEY) || '[]');
-        return Array.isArray(a) ? a.filter(h => h && isFinite(h.lat) && isFinite(h.lon)) : [];
-      } catch (e) { return []; }
-    }
-    function recordDestHistory(dest, name) {
-      if (!dest || !isFinite(dest.lat) || !isFinite(dest.lon)) return;
-      const nm = String(name || '目的地').split(',')[0].trim() || '目的地';
-      let list = loadDestHistory().filter(h => !(h.name === nm && Math.abs(h.lat - dest.lat) < 0.0005 && Math.abs(h.lon - dest.lon) < 0.0005));
-      list.unshift({ name: nm, lat: dest.lat, lon: dest.lon, t: Date.now() });
-      list = list.slice(0, DEST_HISTORY_MAX);
-      try { localStorage.setItem(DEST_HISTORY_KEY, JSON.stringify(list)); } catch (e) { /* 無視 */ }
-      refreshDestHistoryUI();
-    }
-    function selectDestHistory(i) {
-      const h = loadDestHistory()[i];
-      if (!h) return;
-      finalizeDestination({ lat: h.lat, lon: h.lon }, h.name);
-    }
-    function clearDestHistory() {
-      try { localStorage.removeItem(DEST_HISTORY_KEY); } catch (e) { /* 無視 */ }
-      refreshDestHistoryUI();
-    }
-    function refreshDestHistoryUI() {
-      const el = document.getElementById('sidebarDestHistoryList');
-      if (!el) return;
-      const list = loadDestHistory();
-      const clr = document.getElementById('sidebarDestHistoryClear');
-      if (clr) clr.classList.toggle('hidden', !list.length);
-      if (!list.length) {
-        el.innerHTML = '<div class="text-[11px] text-slate-500 px-1">まだ履歴がありません</div>';
-        return;
-      }
-      el.innerHTML = list.map((h, i) => `
-        <button onclick="selectDestHistory(${i})" class="w-full bg-slate-900 rounded border border-slate-800 hover:bg-slate-800 p-1.5 flex items-center gap-2 text-left text-slate-300">
-          <i class="fa-solid fa-clock-rotate-left text-[10px] text-slate-500"></i>
-          <span class="text-[11px] truncate flex-1">${escapeHtml(h.name)}</span>
-        </button>`).join('');
-    }
-    /* ============ 履歴ここまで ============ */
-
     // サイドパネル(Root探索メニュー)内の登録地点ミニリストを最新の状態に描画する
     function refreshSavedPlacesUI() {
       const listEl = document.getElementById('sidebarSavedPlacesList');
@@ -12306,7 +12247,6 @@ function illTollNear(p) {   // 次が料金所(有料道路に入る・名前に
 
     // 目的地の座標・名前が決まった後の共通処理(ルート計算・カード表示など)
     async function finalizeDestination(dest, name, opts = {}) {
-      try { recordDestHistory(dest, name); } catch (e) { /* 無視 */ }
       clearWaypoints();   // 目的地が変わったら、前の経由地は消す
       if (map && preOverviewZoom === null) preOverviewZoom = (candidateBaseZoom !== null) ? candidateBaseZoom : map.getZoom();   // 今の縮尺(例: 200m)を覚えておく
       candidateBaseZoom = null;
@@ -16986,7 +16926,6 @@ setBarPos(document.documentElement.getAttribute('data-barpos') || 'right');
   syncUi(); paint();
 })();
 try { refreshSavedPlacesUI(); renderSavedPlaceMarkers(); } catch (e) { /* 無視 */ }
-try { refreshDestHistoryUI(); } catch (e) { /* 無視 */ }
 </script>
 <script id="moreFeaturesScript">
 /* ===== 追加機能: 速度超過のお知らせ / EV充電案内 / 昼夜の自動切り替え / 走行ログ / バックアップ ===== */
@@ -20620,7 +20559,7 @@ setInterval(function(){
 },2500);
 
 /* ==================================================================
-   ④ ROUTE EDIT: 経由地の追加・削除・並べ替え / 道(例: 東名高速道路)を指定して経由
+   ④ ROUTE EDIT: 経由地の追加・削除・並べ替え / 道(例: 国道23号)を指定して経由
       経由地は既存のしくみ(waypointsList / addWaypoint / applyWaypointChange)をそのまま使う
 ================================================================== */
 var ED={q:"",busy:false,res:null,err:"",msg:"",at:0};
@@ -20640,13 +20579,13 @@ function editHtml(){
   });
   if(list.length)h+='<div style="margin-top:8px"><button class="xfB s" data-ed="clear">すべて外す</button></div>';
   h+='<div class="xfS" style="margin-top:8px">変更すると、ナビが新しい経由地でルートを探し直します。</div></div>';
-  h+='<div class="xfC"><h3>道を指定して経由</h3><div style="display:flex;gap:6px"><input id="axtEdQ" class="xfIn" placeholder="例: 東名高速道路 / 阪神高速" value="'+esc(ED.q)+'"><button class="xfB p" data-ed="search"'+(ED.busy?" disabled":"")+'>探す</button></div>'
+  h+='<div class="xfC"><h3>道を指定して経由</h3><div style="display:flex;gap:6px"><input id="axtEdQ" class="xfIn" placeholder="例: 国道23号 / 伊勢湾岸道" value="'+esc(ED.q)+'"><button class="xfB p" data-ed="search"'+(ED.busy?" disabled":"")+'>探す</button></div>'
    +'<div class="xfS" style="margin-top:6px">ルートの近く(約8km以内。ルートが無ければ現在地の周り)にある、その道の地点を探します。経由地にすると、その地点を必ず通るルートになります。道に沿って走りたい時は、道の2か所に経由地を入れてください。</div></div>';
   if(ED.busy)h+='<div class="xfC"><div class="xfS">道を探しています…</div></div>';
   if(ED.err)h+='<div class="xfC xfDia err"><b>'+tag("r","エラー")+'探せませんでした</b><div class="why">'+esc(ED.err)+'</div></div>';
   if(ED.res){
     h+='<div class="xfC"><h3>見つかった地点 '+ED.res.items.length+'件</h3><div class="xfS">'+TG+'情報源: OpenStreetMap(Overpass API / '+esc(ED.res.host)+')・'+hhmm(ED.res.at)+'に取得。距離は'+(ED.res.byRoute?"いまのルート":"現在地")+'からの直線距離です。</div></div>';
-    if(!ED.res.items.length)h+='<div class="xfC"><div class="xfS">その名前の道は、この近くで見つかりませんでした。「東名高速道路」「阪神高速」のように入れ直してみてください。</div></div>';
+    if(!ED.res.items.length)h+='<div class="xfC"><div class="xfS">その名前の道は、この近くで見つかりませんでした。「国道23号」「23号線」のように入れ直してみてください。</div></div>';
     ED.res.items.forEach(function(o,i){
       h+='<div class="xfC"><div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><b style="font-size:15px">'+esc(o.name)+'</b><span style="font-weight:800">'+esc(fmtD(o.d))+'</span></div>'
        +'<div class="xfS">'+(o.d<150?"いまのルートがほぼ通っている道です":(ED.res.byRoute?"ルートから":"現在地から")+"約"+esc(fmtD(o.d))+"離れています")+' / '+tag("g","OSM")+'</div>'
@@ -20954,5 +20893,202 @@ window.SHOTOOLS={open:T.open,close:T.close,diag:diagRun,_PK:PK,_DG:DG,routeHtml:
 })();
 </script>
 
+<script id="axionKeyBridge">
+/* AXION KEY 連携ブリッジ（追加分のみ。既存の処理は変更していません）
+   同じブラウザ・同じ場所で開いた AXION KEY（index.html）から、施錠・解錠の指示を受け取ります。 */
+(function(){
+  var CH='axion-key-link-v1',SK='axionKeyLink.msg',bc=null,seen={};
+  function rid(){return Math.random().toString(36).slice(2,12)}
+  function locked(){try{return !!vehicleLocked}catch(e){return false}}
+  function inPark(){try{return currentGear==='P'}catch(e){return true}}
+  function tx(m){
+    m.from='car';m.mid=rid();m.ts=Date.now();seen[m.mid]=1;
+    try{if(bc)bc.postMessage(m)}catch(e){}
+    try{if(window.AKP&&AKP.open())AKP.send(m)}catch(e){}
+    try{localStorage.setItem(SK,JSON.stringify(m))}catch(e){}
+  }
+  function note(t){
+    try{
+      var d=document.getElementById('axKeyNote');
+      if(!d){d=document.createElement('div');d.id='axKeyNote';
+        d.style.cssText='position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:99999;background:#0d1a2e;border:1px solid #1d4a84;color:#eef2f8;padding:9px 16px;border-radius:12px;font:600 13px/1.4 sans-serif;opacity:0;transition:opacity .25s;pointer-events:none';
+        document.body.appendChild(d)}
+      d.textContent=t;d.style.opacity='1';clearTimeout(d._t);d._t=setTimeout(function(){d.style.opacity='0'},2200);
+    }catch(e){}
+  }
+  var orig=(typeof toggleVehicleLock==='function')?toggleVehicleLock:null;
+  function setLock(want){
+    if(!orig)return false;
+    if(locked()!==want){try{orig()}catch(e){}}
+    return locked()===want;
+  }
+  function announce(){tx({t:'veh',locked:locked(),name:'AXION CORE'})}
+  function rx(m){
+    if(!m||m.from!=='key'||seen[m.mid])return;seen[m.mid]=1;
+    if(m.t==='hello'){announce();return}
+    if(m.t==='cmd'){
+      var want=m.action==='lock';
+      if(!inPark()){tx({t:'ack',cid:m.cid,ok:false,locked:locked(),reason:'走行中は施錠・解錠できません（Pに入れてください）'});note('AXION KEY：走行中のため操作を拒否しました');return}
+      var ok=setLock(want);
+      tx({t:'ack',cid:m.cid,ok:ok,locked:locked(),reason:ok?'':'車両が応答しませんでした'});
+      if(ok)note('AXION KEY：'+(want?'施錠しました':'解錠しました'));
+    }
+  }
+  try{bc=new BroadcastChannel(CH);bc.onmessage=function(e){rx(e.data)}}catch(e){}
+  window.addEventListener('storage',function(e){if(e.key===SK&&e.newValue){try{rx(JSON.parse(e.newValue))}catch(x){}}});
+  /* 車両側（P画面のロックボタン）で操作したときも、キー側へ状態を知らせる */
+  if(orig){window.toggleVehicleLock=function(){var r=orig.apply(this,arguments);setTimeout(function(){tx({t:'state',locked:locked()})},0);return r}}
+  window.__akRx=rx;window.__akNote=note;window.__akAnnounce=announce;
+  announce();setInterval(announce,5000);
+})();
+</script>
+
+<script id="axionKeyPair">
+var AKP=(function(){
+var ICE=[{urls:'stun:stun.l.google.com:19302'}],pc=null,dc=null,onmsg=null,onopen=null;
+function b64(h){var a=h.split(':').map(function(x){return parseInt(x,16)});return btoa(String.fromCharCode.apply(null,a)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
+function unb64(s){s=s.replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';return Array.prototype.map.call(atob(s),function(c){return('0'+c.charCodeAt(0).toString(16)).slice(-2).toUpperCase()}).join(':')}
+function pack(sdp){
+ var u=/a=ice-ufrag:(\S+)/.exec(sdp)[1],p=/a=ice-pwd:(\S+)/.exec(sdp)[1],f=/a=fingerprint:sha-256 (\S+)/i.exec(sdp)[1],cs=[];
+ sdp.split(/\r?\n/).forEach(function(l){var m=/^a=candidate:\S+ \d+ udp \d+ (\S+) (\d+) typ (\w+)/.exec(l);if(m&&m[1].indexOf(':')<0)cs.push({a:m[1]+':'+m[2],r:m[3]==='srflx'?0:(/\.local$/.test(m[1])?2:1)})});
+ cs.sort(function(a,b){return a.r-b.r});
+ var out='AK1|'+u+'|'+p+'|'+b64(f),n=0;
+ cs.forEach(function(c){var t=out+(n?',':'|')+c.a;if(t.length<=200){out=t;n++}});
+ return out}
+function unpack(code,setup){
+ var p=code.trim().split('|');if(p[0]!=='AK1'||p.length<4)throw new Error('bad');
+ var s='v=0\r\no=- 1 2 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE 0\r\nm=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\nc=IN IP4 0.0.0.0\r\na=ice-ufrag:'+p[1]+'\r\na=ice-pwd:'+p[2]+'\r\na=fingerprint:sha-256 '+unb64(p[3])+'\r\na=setup:'+setup+'\r\na=mid:0\r\na=sctp-port:5000\r\na=max-message-size:262144\r\n';
+ (p[4]||'').split(',').filter(Boolean).forEach(function(c,i){var k=c.lastIndexOf(':');s+='a=candidate:'+(i+1)+' 1 udp '+(2113937151-i)+' '+c.slice(0,k)+' '+c.slice(k+1)+' typ host\r\n'});
+ return s+'a=end-of-candidates\r\n'}
+function gather(c){return new Promise(function(res){if(c.iceGatheringState==='complete')return res();var t=setTimeout(res,3500);c.addEventListener('icegatheringstatechange',function(){if(c.iceGatheringState==='complete'){clearTimeout(t);res()}})})}
+function bind(ch){dc=ch;ch.onopen=function(){if(onopen)onopen()};ch.onmessage=function(e){try{if(onmsg)onmsg(JSON.parse(e.data))}catch(x){}}}
+function mk(){if(pc){try{pc.close()}catch(e){}}dc=null;pc=new RTCPeerConnection({iceServers:ICE});return pc}
+return{
+ open:function(){return !!dc&&dc.readyState==='open'},
+ send:function(m){dc.send(JSON.stringify(m))},
+ on:function(a,b){onmsg=a;onopen=b},
+ offer:async function(){var c=mk();bind(c.createDataChannel('key'));await c.setLocalDescription(await c.createOffer());await gather(c);return pack(c.localDescription.sdp)},
+ accept:async function(code){var c=mk();c.ondatachannel=function(e){bind(e.channel)};await c.setRemoteDescription({type:'offer',sdp:unpack(code,'actpass')});await c.setLocalDescription(await c.createAnswer());await gather(c);return pack(c.localDescription.sdp)},
+ finish:async function(code){await pc.setRemoteDescription({type:'answer',sdp:unpack(code,'active')})},
+ scan:function(v,cb,err){
+  if(!('BarcodeDetector' in window)){err('このブラウザはQR読み取りに未対応です。コードを貼り付けてください');return function(){}}
+  var st=null,tm=null,off=false,det=new BarcodeDetector({formats:['qr_code']});
+  function stop(){off=true;clearInterval(tm);if(st)st.getTracks().forEach(function(t){t.stop()})}
+  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}).then(function(s){st=s;v.srcObject=s;v.play();
+   tm=setInterval(function(){if(off)return;det.detect(v).then(function(r){if(r.length&&/^AK1\|/.test(r[0].rawValue)){stop();cb(r[0].rawValue)}}).catch(function(){})},300)}).catch(function(){err('カメラを使えませんでした')});
+  return stop}
+}})();
+var AKQR=(function(){
+var EXP=new Array(512),LOG=new Array(256);
+(function(){var x=1;for(var i=0;i<255;i++){EXP[i]=x;LOG[x]=i;x<<=1;if(x&256)x^=285}for(var i=255;i<512;i++)EXP[i]=EXP[i-255]})();
+function gmul(a,b){return a&&b?EXP[LOG[a]+LOG[b]]:0}
+function rsGen(n){var g=[1];for(var i=0;i<n;i++){var ng=new Array(g.length+1).fill(0);for(var j=0;j<g.length;j++){ng[j]^=g[j];ng[j+1]^=gmul(g[j],EXP[i])}g=ng}return g}
+function rsEnc(data,n){var g=rsGen(n),r=new Array(n).fill(0);for(var i=0;i<data.length;i++){var f=data[i]^r[0];r.shift();r.push(0);for(var j=0;j<n;j++)r[j]^=gmul(g[j+1],f)}return r}
+/* [ecPerBlock, [blocks, dataPerBlock], optional [blocks2, dataPerBlock2]] for ECC M */
+var M=[null,[10,[1,16]],[16,[1,28]],[26,[1,44]],[18,[2,32]],[24,[2,43]],[16,[4,27]],[18,[4,31]],[22,[2,38],[2,39]],[22,[3,36],[2,37]],[26,[4,43],[1,44]]];
+var ALIGN=[null,[],[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46],[6,28,50]];
+function utf8(s){return Array.from(new TextEncoder().encode(s))}
+function bch(v,poly,hb){var d=v<<(hb-1===14?10:12);return d}
+function fmtBits(mask){var d=(0<<3|mask),r=d<<10;for(var i=14;i>=10;i--)if(r>>i&1)r^=0x537<<(i-10);return((d<<10)|r)^0x5412}
+function verBits(v){var r=v<<12;for(var i=17;i>=12;i--)if(r>>i&1)r^=0x1F25<<(i-12);return(v<<12)|r}
+function build(text){
+ var bytes=utf8(text),ver=0;
+ for(var v=1;v<=10;v++){var t=M[v],cap=t[1][0]*t[1][1]+(t[2]?t[2][0]*t[2][1]:0);var cc=v<10?8:16;if(4+cc+bytes.length*8<=cap*8){ver=v;break}}
+ if(!ver)throw new Error('too long');
+ var t=M[ver],cap=t[1][0]*t[1][1]+(t[2]?t[2][0]*t[2][1]:0),bits=[];
+ function put(v,n){for(var i=n-1;i>=0;i--)bits.push(v>>i&1)}
+ put(4,4);put(bytes.length,ver<10?8:16);bytes.forEach(function(b){put(b,8)});
+ put(0,Math.min(4,cap*8-bits.length));while(bits.length%8)bits.push(0);
+ var data=[];for(var i=0;i<bits.length;i+=8){var b=0;for(var j=0;j<8;j++)b=b<<1|bits[i+j];data.push(b)}
+ for(var p=0;data.length<cap;p++)data.push(p%2?17:236);
+ var blocks=[],pos=0,ec=t[0];
+ [t[1],t[2]].forEach(function(g){if(!g)return;for(var i=0;i<g[0];i++){blocks.push(data.slice(pos,pos+g[1]));pos+=g[1]}});
+ var ecs=blocks.map(function(b){return rsEnc(b,ec)}),fin=[],mx=Math.max.apply(null,blocks.map(function(b){return b.length}));
+ for(var i=0;i<mx;i++)blocks.forEach(function(b){if(i<b.length)fin.push(b[i])});
+ for(var i=0;i<ec;i++)ecs.forEach(function(e){fin.push(e[i])});
+ var n=ver*4+17,mod=[],fn=[];for(var i=0;i<n;i++){mod.push(new Array(n).fill(0));fn.push(new Array(n).fill(false))}
+ function set(r,c,v){if(r<0||c<0||r>=n||c>=n)return;mod[r][c]=v?1:0;fn[r][c]=true}
+ function finder(r,c){for(var i=-1;i<=7;i++)for(var j=-1;j<=7;j++){var on=i>=0&&i<=6&&j>=0&&j<=6&&(i==0||i==6||j==0||j==6||(i>=2&&i<=4&&j>=2&&j<=4));set(r+i,c+j,on)}}
+ finder(0,0);finder(0,n-7);finder(n-7,0);
+ for(var i=8;i<n-8;i++){set(6,i,i%2==0);set(i,6,i%2==0)}
+ var al=ALIGN[ver];for(var a=0;a<al.length;a++)for(var b=0;b<al.length;b++){var r=al[a],c=al[b];if((a==0&&b==0)||(a==0&&b==al.length-1)||(a==al.length-1&&b==0))continue;for(var i=-2;i<=2;i++)for(var j=-2;j<=2;j++)set(r+i,c+j,Math.max(Math.abs(i),Math.abs(j))!=1)}
+ for(var i=0;i<9;i++){fn[8][i]=true;fn[i][8]=true}for(var i=0;i<8;i++){fn[8][n-1-i]=true;fn[n-1-i][8]=true}
+ set(n-8,8,true);
+ if(ver>=7){var vb=verBits(ver);for(var i=0;i<18;i++){var v=vb>>i&1,a=Math.floor(i/3),b=i%3;set(a,n-11+b,v);set(n-11+b,a,v)}}
+ var seq=[];for(var i=0;i<fin.length;i++)for(var j=7;j>=0;j--)seq.push(fin[i]>>j&1);
+ var MASK=[function(r,c){return(r+c)%2==0},function(r){return r%2==0},function(r,c){return c%3==0},function(r,c){return(r+c)%3==0},function(r,c){return(Math.floor(r/2)+Math.floor(c/3))%2==0},function(r,c){return(r*c)%2+(r*c)%3==0},function(r,c){return((r*c)%2+(r*c)%3)%2==0},function(r,c){return((r+c)%2+(r*c)%3)%2==0}];
+ function place(mask){
+  var m=mod.map(function(r){return r.slice()}),k=0,up=true;
+  for(var c=n-1;c>0;c-=2){if(c==6)c--;for(var i=0;i<n;i++){var r=up?n-1-i:i;for(var d=0;d<2;d++){var cc=c-d;if(fn[r][cc])continue;var bit=k<seq.length?seq[k]:0;k++;if(MASK[mask](r,cc))bit^=1;m[r][cc]=bit}}up=!up}
+  var f=fmtBits(mask);
+  for(var i=0;i<15;i++){var v=f>>i&1;
+   if(i<6)m[i][8]=v;else if(i<8)m[i+1][8]=v;else m[n-15+i][8]=v;
+   if(i<8)m[8][n-1-i]=v;else if(i<9)m[8][15-i]=v;else m[8][14-i]=v}
+  m[n-8][8]=1;return m}
+ function pen(m){var s=0;for(var d=0;d<2;d++){for(var i=0;i<n;i++){var run=1;for(var j=1;j<n;j++){var a=d?m[j][i]:m[i][j],b=d?m[j-1][i]:m[i][j-1];if(a==b){run++;if(run==5)s+=3;else if(run>5)s++}else run=1}}}
+  for(var i=0;i<n-1;i++)for(var j=0;j<n-1;j++){var v=m[i][j];if(v==m[i][j+1]&&v==m[i+1][j]&&v==m[i+1][j+1])s+=3}
+  var p1=[1,0,1,1,1,0,1,0,0,0,0],p2=[0,0,0,0,1,0,1,1,1,0,1];
+  for(var i=0;i<n;i++)for(var j=0;j<=n-11;j++){var a=true,b=true,c=true,d2=true;for(var k=0;k<11;k++){if(m[i][j+k]!=p1[k])a=false;if(m[i][j+k]!=p2[k])b=false;if(m[j+k][i]!=p1[k])c=false;if(m[j+k][i]!=p2[k])d2=false}if(a)s+=40;if(b)s+=40;if(c)s+=40;if(d2)s+=40}
+  var dk=0;for(var i=0;i<n;i++)for(var j=0;j<n;j++)dk+=m[i][j];s+=Math.floor(Math.abs(dk*20-n*n*10)/(n*n))*10;return s}
+ var best=null,bs=1e9;for(var k=0;k<8;k++){var m=place(k),p=pen(m);if(p<bs){bs=p;best=m}}
+ return best}
+function svg(text,px){var m=build(text),n=m.length,q=4,sz=n+q*2,d='';
+ for(var r=0;r<n;r++)for(var c=0;c<n;c++)if(m[r][c])d+='M'+(c+q)+' '+(r+q)+'h1v1h-1z';
+ return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+sz+' '+sz+'" width="'+px+'" height="'+px+'" shape-rendering="crispEdges"><rect width="'+sz+'" height="'+sz+'" fill="#fff"/><path d="'+d+'" fill="#000"/></svg>'}
+return{build:build,svg:svg}})();
+(function(){
+var o=null,stop=null;
+function $(i){return document.getElementById(i)}
+function msg(t){$('axkMsg').textContent=t}
+function css(e,s){e.style.cssText=s;return e}
+function build(){
+ o=css(document.createElement('div'),'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.94);color:#eef2f8;font:500 14px/1.6 sans-serif;display:none;overflow:auto;padding:24px;text-align:center');
+ o.innerHTML='<div style="max-width:420px;margin:0 auto"><h2 style="margin:0 0 6px;font-size:18px">AXION KEY と連携</h2><p style="color:#7d8aa0;margin:0 0 12px">キーのペアリング画面に出ているQRを読み取ってください</p><video id="axkV" playsinline muted style="width:100%;border-radius:16px;background:#000"></video><div id="axkOut" style="margin:12px 0"></div><input id="axkAns" readonly style="display:none;width:100%;margin-bottom:10px;padding:8px;border-radius:10px;background:#0f1218;color:#eef2f8;border:1px solid #1b2230"><textarea id="axkIn" placeholder="コードを貼り付け（AK1|…）" style="width:100%;height:60px;border-radius:10px;background:#0f1218;color:#eef2f8;border:1px solid #1b2230;padding:8px"></textarea><div style="display:flex;gap:8px;margin-top:10px"><button id="axkGo" style="flex:1;padding:12px;border-radius:12px;background:#2f8cff;color:#fff;font-weight:700;border:0">貼り付けて連携</button><button id="axkX" style="flex:1;padding:12px;border-radius:12px;background:#0f1218;color:#eef2f8;border:1px solid #1b2230">閉じる</button></div><div id="axkMsg" style="margin-top:12px;color:#78b8ff"></div></div>';
+ document.body.appendChild(o);
+ $('axkGo').onclick=function(){got($('axkIn').value)};
+ $('axkX').onclick=close;
+}
+function close(){if(stop){stop();stop=null}if(o)o.style.display='none'}
+function got(code){
+ if(stop){stop();stop=null}$('axkV').style.display='none';msg('連携中…');
+ AKP.accept(code).then(function(a){
+  try{$('axkOut').innerHTML=AKQR.svg(a,240)}catch(e){$('axkOut').innerHTML=''}
+  $('axkAns').value=a;$('axkAns').style.display='block';
+  msg('キーの「ナビの返事QRを読み取る」で、このQRを読み取ってください')
+ }).catch(function(){msg('コードが正しくありません。キーでQRを出し直してください')});
+}
+function open(){
+ if(!o)build();o.style.display='block';$('axkOut').innerHTML='';$('axkAns').style.display='none';msg('');
+ var v=$('axkV');v.style.display='block';stop=AKP.scan(v,got,msg);
+}
+window.AXKEYPAIR={open:open,close:close};
+AKP.on(function(m){if(window.__akRx)__akRx(m)},function(){close();if(window.__akNote)__akNote('AXION KEY：QR連携で接続しました');if(window.__akAnnounce)__akAnnounce()});
+
+})();
+
+(function(){
+var X=window.AXION&&window.AXION.ext;if(!X||!X.V||typeof X.V.HOME!=="function")return;
+try{if(X.P&&!X.P.key)X.P.key='<circle cx="8" cy="12" r="4"/><path d="M12 12h9M17 12v4M20 12v3"/>'}catch(e){}
+var css=document.createElement('style');
+css.textContent='.hm-tiles.xfRow{grid-template-columns:repeat(7,1fr)}@media(max-width:600px){.hm-tiles.xfRow{grid-template-columns:repeat(4,1fr)}}';
+document.head.appendChild(css);
+var prev=X.V.HOME;
+X.V.HOME=function(){
+ var h=prev.apply(this,arguments);
+ try{
+  var e='</div></div><aside class="hm-side">',i=h.indexOf(e);
+  if(i>=0&&h.indexOf('xfRow')>=0){
+   var ic='';try{ic=X.ic('key','')}catch(x){}
+   h=h.slice(0,i)+'<button type="button" class="hm-tile" data-axkey="1">'+ic+'<span>キー連携</span></button>'+h.slice(i);
+  }
+ }catch(x){}
+ return h;
+};
+X.root.addEventListener('click',function(ev){
+ var t=ev.target.closest&&ev.target.closest('[data-axkey]');
+ if(t&&window.AXKEYPAIR)window.AXKEYPAIR.open();
+});
+})();
+</script>
 </body>
 </html>
