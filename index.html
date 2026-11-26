@@ -15311,6 +15311,20 @@ if (walkModeOn()) return;   // 歩行者モードではカメラを使わない
           }
         });
       })();
+      window.__apCtl = {
+        info: function () { if (!S) return null; return { stage: S.stage, s: SLOTS.map(function (sl, i) { var o = S.opts[i]; return [sl.id, o && o.back ? 1 : 0, o && o.front ? 1 : 0]; }).filter(function (x) { return x[1] || x[2]; }) }; },
+        lot: function (l) { if (l === 'para') window.apMethod('parallel'); else if (LOT === 'para') window.apMethod('back'); },
+        pick: function (id, m) {
+          if (!S) return false; const i = SLOTS.findIndex(function (sl) { return String(sl.id) === String(id); }); if (i < 0) return false;
+          const o2 = S.opts[i]; if (!o2 || !(o2.back || o2.front)) return false;
+          S.sel = i; S.method = ''; S.methodBtn = ''; S.plan = null; S.s = 0; S.blend = 0;
+          if (LOT === 'para' && o2.back) { S.method = 'back'; S.methodBtn = 'parallel'; S.plan = o2.back; setStage('ready'); }
+          else { setStage('method'); window.apMethod((m === 'front' && o2.front) ? 'front' : (o2.back ? 'back' : 'front')); }
+          return S.stage === 'ready';
+        },
+        go: function () { window.apMain(); },
+        stage: function () { return S ? { stage: S.stage, text: (typeof guideText === 'function' ? guideText() : '') } : null; }
+      };
       window.__autoParkTest = { planPara: planPara, setLot: setLot, PARA_SLOTS: PARA_SLOTS, SLOTS: SLOTS, makeScenario: makeScenario, poseAt: poseAt, dubins: dubins, buildPath: buildPath, integ: integ, planFor: planFor, bestPlan: bestPlan, carPoly: carPoly, polyHit: polyHit, parkedPoly: parkedPoly,
         consts: { R: R, W_M: W_M, H_M: H_M, START: START, SLOT_D: SLOT_D, CAR_LEN: CAR_LEN, CAR_W: CAR_W, REAR_OH: REAR_OH, CAR_L: CAR_L, FRONT_OH: FRONT_OH } };
     })();
@@ -20926,6 +20940,8 @@ window.SHOTOOLS={open:T.open,close:T.close,diag:diagRun,_PK:PK,_DG:DG,routeHtml:
   function rx(m){
     if(!m||m.from!=='key'||seen[m.mid])return;seen[m.mid]=1;
     if(m.t==='hello'){announce();return}
+    if(m.t==='cmd'&&m.action==='park'){if(window.__akPark)window.__akPark(m);else tx({t:'ack',cid:m.cid,ok:false,locked:locked(),reason:'この車は未対応です'});return}
+    if(m.t==='cmd'&&m.action==='summon'){if(window.__akSummon)window.__akSummon(m);else tx({t:'ack',cid:m.cid,ok:false,locked:locked(),reason:'この車は未対応です'});return}
     if(m.t==='cmd'){
       var want=m.action==='lock';
       if(!inPark()){tx({t:'ack',cid:m.cid,ok:false,locked:locked(),reason:'走行中は施錠・解錠できません（Pに入れてください）'});note('AXION KEY：走行中のため操作を拒否しました');return}
@@ -20938,7 +20954,7 @@ window.SHOTOOLS={open:T.open,close:T.close,diag:diagRun,_PK:PK,_DG:DG,routeHtml:
   window.addEventListener('storage',function(e){if(e.key===SK&&e.newValue){try{rx(JSON.parse(e.newValue))}catch(x){}}});
   /* 車両側（P画面のロックボタン）で操作したときも、キー側へ状態を知らせる */
   if(orig){window.toggleVehicleLock=function(){var r=orig.apply(this,arguments);setTimeout(function(){tx({t:'state',locked:locked()})},0);return r}}
-  window.__akRx=rx;window.__akNote=note;window.__akAnnounce=announce;
+  window.__akTx=tx;window.__akRx=rx;window.__akNote=note;window.__akAnnounce=announce;
   announce();setInterval(announce,5000);
 })();
 </script>
@@ -21108,6 +21124,74 @@ X.root.addEventListener('click',function(ev){
  var t=ev.target.closest&&ev.target.closest('[data-axkey]');
  if(t&&window.AXKEYPAIR)window.AXKEYPAIR.open();
 });
+})();
+
+(function(){
+var st=document.createElement('style');
+st.textContent='#threeDGuidanceOverlay.akBig #guidanceRealMap{left:0!important;top:0!important;width:100%!important;height:100%!important}#threeDGuidanceOverlay.akBig .akPane1{width:50%!important;flex:0 0 50%!important}#threeDGuidanceOverlay.akBig .akPane2{display:none!important}';
+document.head.appendChild(st);
+function ack(m,ok,r){try{window.__akTx({t:'ack',cid:m.cid,ok:ok,reason:r||''})}catch(e){}}
+function bigMap(){
+ var o=document.getElementById('threeDGuidanceOverlay'),mm=document.getElementById('guidanceRealMap'),v=document.getElementById('g3dVisPanel');
+ if(mm&&mm.parentNode)mm.parentNode.classList.add('akPane1');
+ if(v&&v.parentNode)v.parentNode.classList.add('akPane2');
+ if(o)o.classList.add('akBig');
+ setTimeout(function(){try{if(guidanceMiniMap){guidanceMiniMap.invalidateSize();if(userPos)guidanceMiniMap.panTo([userPos.lat,userPos.lon],{animate:false})}}catch(e){}},500);
+}
+function normal(){var o=document.getElementById('threeDGuidanceOverlay');if(o)o.classList.remove('akBig')}
+try{var t0=terminateRoute;terminateRoute=function(){normal();return t0.apply(this,arguments)}}catch(e){}
+window.__akSummon=async function(m){
+ var lat=Number(m.lat),lon=Number(m.lng);
+ if(!isFinite(lat)||!isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180){ack(m,false,'位置情報が正しくありません');return}
+ try{
+  if(typeof isNavigating!=='undefined'&&isNavigating){ack(m,false,'車はすでに走行中です');return}
+  if(window.__akNote)__akNote('AXION KEY：車を呼ばれました。ルートを探しています');
+  await setDestinationFromLatLng(lat,lon,{autoStart:true});
+  if(typeof pendingRouteGeometry==='undefined'||!pendingRouteGeometry){ack(m,false,'ルートを取得できませんでした');return}
+  ack(m,true);
+  open3DGuidanceView();
+  bigMap();
+  startDemoDrive();
+ }catch(e){ack(m,false,'車を動かせませんでした')}
+};
+})();
+
+(function(){
+var rep=null,lastK='';
+function ack(m,ok,r,x){var o={t:'ack',cid:m.cid,ok:ok,reason:r||''};if(x)for(var k in x)o[k]=x[k];try{window.__akTx(o)}catch(e){}}
+function sleep(t){return new Promise(function(r){setTimeout(r,t)})}
+function report(){
+ clearInterval(rep);
+ rep=setInterval(function(){
+  var cam=!!(window.APREAL&&APREAL.on),c=window.__apCtl&&__apCtl.stage(),ov=document.getElementById('autoParkOverlay');
+  var open=ov&&!ov.classList.contains('hidden');
+  if(!cam&&!open){clearInterval(rep);return}
+  var tg=document.getElementById('camStatusTag'),txt=cam?(tg?tg.innerText:''):(c?c.text:''),st=c?c.stage:'';
+  var k=st+'|'+txt;
+  if(k!==lastK){lastK=k;try{__akTx({t:'park',stage:st,text:String(txt).slice(0,120)})}catch(e){}}
+  if(!cam&&st==='done')clearInterval(rep);
+ },2000);
+}
+window.__akPark=async function(m){
+ try{
+  if(m.step==='prep'){
+   if(window.__akNote)__akNote('AXION KEY：自動駐車の準備');
+   if(m.mode==='camera'){openAutoParkCam();ack(m,true,'',{mode:'camera'});report();return}
+   openAutoPark();__apCtl.lot(m.lot==='para'?'para':'perp');
+   var n=0;while(n<50){var i=__apCtl.info();if(i&&i.stage==='pick')break;await sleep(200);n++}
+   var inf=__apCtl.info();
+   if(!inf||inf.stage!=='pick'){ack(m,false,'駐車場の準備ができませんでした');return}
+   ack(m,true,'',{mode:'demo',s:inf.s});report();return}
+  if(m.step==='go'){
+   if(!__apCtl.pick(m.slot,m.method)){ack(m,false,'その場所には駐車できません');return}
+   __apCtl.go();ack(m,true);report();return}
+  if(m.step==='stop'){
+   try{if(window.APREAL&&APREAL.on){apRealStop();toggleCameraMode(false)}}catch(e){}
+   try{apClose()}catch(e){}
+   clearInterval(rep);ack(m,true);return}
+  ack(m,false,'不明な操作です');
+ }catch(e){ack(m,false,'自動駐車を始められませんでした')}
+};
 })();
 </script>
 </body>
