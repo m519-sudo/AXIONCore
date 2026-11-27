@@ -20943,6 +20943,7 @@ window.SHOTOOLS={open:T.open,close:T.close,diag:diagRun,_PK:PK,_DG:DG,routeHtml:
     if(m.t==='hello'){announce();return}
     if(m.t==='cmd'&&m.action==='park'){if(window.__akPark)window.__akPark(m);else tx({t:'ack',cid:m.cid,ok:false,locked:locked(),reason:'この車は未対応です'});return}
     if(m.t==='cmd'&&m.action==='summon'){if(window.__akSummon)window.__akSummon(m);else tx({t:'ack',cid:m.cid,ok:false,locked:locked(),reason:'この車は未対応です'});return}
+    if(m.t==='cmd'&&m.action!=='lock'&&m.action!=='unlock'){tx({t:'ack',cid:m.cid,ok:false,locked:locked(),reason:'この操作には未対応です'});return}
     if(m.t==='cmd'){
       var want=m.action==='lock';
       if(!inPark()){tx({t:'ack',cid:m.cid,ok:false,locked:locked(),reason:'走行中は施錠・解錠できません（Pに入れてください）'});note('AXION KEY：走行中のため操作を拒否しました');return}
@@ -21159,7 +21160,7 @@ window.__akSummon=async function(m){
 
 (function(){
 var rep=null,lastK='';
-function ack(m,ok,r,x){var o={t:'ack',cid:m.cid,ok:ok,reason:r||''};if(x)for(var k in x)o[k]=x[k];try{window.__akTx(o)}catch(e){}}
+function ack(m,ok,r,x){var o={t:'ack',cid:m.cid,ok:ok,reason:r||'',pk:1};if(x)for(var k in x)o[k]=x[k];try{window.__akTx(o)}catch(e){}}
 function sleep(t){return new Promise(function(r){setTimeout(r,t)})}
 function report(){
  clearInterval(rep);
