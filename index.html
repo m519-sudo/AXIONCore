@@ -14941,13 +14941,13 @@ if (walkModeOn()) return;   // 歩行者モードではカメラを使わない
         if (lot) setLot(lot);
         let S = null;
         for (let tries = 0; tries < 12; tries++) {
-          const occ = SLOTS.map(() => Math.random() < (LOT === 'para' ? 0.4 : 0.45));
+          const FZ = window.__apForce, occ = (FZ && FZ.occ && FZ.occ.length === SLOTS.length) ? FZ.occ.slice() : SLOTS.map(() => Math.random() < (LOT === 'para' ? 0.4 : 0.45));
           if (LOT === 'para' && occ.every(Boolean)) occ[(Math.random() * occ.length) | 0] = false;
           const parked = [], cols = ['var(--tx3,#94a3b8)', '#fca5a5', '#93c5fd', '#fcd34d', '#a7f3d0', '#c4b5fd', '#e5e7eb', 'var(--ln2,#475569)'];
           SLOTS.forEach((sl, i) => { if (occ[i]) parked.push(parkedPoly(sl)); });
           const opts = SLOTS.map((sl, i) => (occ[i] ? null : { back: bestPlan(sl, 'back', parked), front: bestPlan(sl, 'front', parked) }));
           const n = opts.filter((o) => o && (o.back || o.front)).length;
-          S = { occ: occ, cols: SLOTS.map(() => cols[(Math.random() * cols.length) | 0]), parked: parked, opts: opts, n: n };
+          S = { occ: occ, cols: (FZ && FZ.cols && FZ.cols.length === SLOTS.length) ? FZ.cols.slice() : SLOTS.map(() => cols[(Math.random() * cols.length) | 0]), parked: parked, opts: opts, n: n };
           S.cars = []; SLOTS.forEach((sl, i) => { if (!occ[i]) return; const pg = parkedPoly(sl); S.cars.push({ cx: (pg[0][0] + pg[2][0]) / 2, cy: (pg[0][1] + pg[2][1]) / 2, phi: sl.pk ? sl.pk.phi : Math.atan2(sl.din[1], sl.din[0]), col: S.cols[i] }); });
           if (n >= (LOT === 'para' ? 1 : 4)) break;
         }
@@ -15312,6 +15312,7 @@ if (walkModeOn()) return;   // 歩行者モードではカメラを使わない
         });
       })();
       window.__apCtl = {
+        perp: function () { setLot('perp'); },
         info: function () { if (!S) return null; return { stage: S.stage, s: SLOTS.map(function (sl, i) { var o = S.opts[i]; return [sl.id, o && o.back ? 1 : 0, o && o.front ? 1 : 0]; }).filter(function (x) { return x[1] || x[2]; }) }; },
         lot: function (l) { if (l === 'para') window.apMethod('parallel'); else if (LOT === 'para') window.apMethod('back'); },
         pick: function (id, m) {
@@ -21133,7 +21134,7 @@ document.head.appendChild(st);
 function ack(m,ok,r,x){var o={t:'ack',cid:m.cid,ok:ok,reason:r||''};if(x)for(var q in x)o[q]=x[q];try{window.__akTx(o)}catch(e){}}
 function bigMap(){
  var o=document.getElementById('threeDGuidanceOverlay'),mm=document.getElementById('guidanceRealMap'),v=document.getElementById('g3dVisPanel');
- if(mm&&mm.parentNode)mm.parentNode.classList.add('akPane1');
+ if(mm&&mm.parentNode){mm.parentNode.classList.add('akPane1');if(!mm.parentNode.querySelector('.akCr')){var cr=document.createElement('div');cr.className='akCr';cr.textContent='© OpenStreetMap contributors';cr.style.cssText='position:absolute;right:4px;bottom:2px;z-index:600;font:8px sans-serif;color:#e2e8f0;background:rgba(0,0,0,.55);padding:1px 4px;border-radius:3px;pointer-events:none';if(getComputedStyle(mm.parentNode).position==='static')mm.parentNode.style.position='relative';mm.parentNode.appendChild(cr)}}
  if(v&&v.parentNode)v.parentNode.classList.add('akPane2');
  if(o)o.classList.add('akBig');
  setTimeout(function(){try{if(guidanceMiniMap){guidanceMiniMap.invalidateSize();if(userPos)guidanceMiniMap.panTo([userPos.lat,userPos.lon],{animate:false})}}catch(e){}},500);
@@ -21182,6 +21183,12 @@ window.__akPark=async function(m){
    var inf=__apCtl.info();
    if(!inf||inf.stage!=='pick'){ack(m,false,'駐車場の準備ができませんでした');return}
    ack(m,true,'',{mode:'demo',s:inf.s});report();return}
+  if(m.step==='demo'){
+   window.__apForce={occ:String(m.occ||'').split('').map(function(c){return c==='1'}),cols:Array.isArray(m.cols)?m.cols:null};
+   try{__apCtl.perp();openAutoPark()}finally{window.__apForce=null}
+   var q=0;while(q<60){var ii=__apCtl.info();if(ii&&ii.stage==='pick')break;await sleep(200);q++}
+   if(!__apCtl.pick(m.slot,m.method)){ack(m,false,'ナビでは同じ条件で入れませんでした');return}
+   __apCtl.go();ack(m,true);report();return}
   if(m.step==='go'){
    if(!__apCtl.pick(m.slot,m.method)){ack(m,false,'その場所には駐車できません');return}
    __apCtl.go();ack(m,true);report();return}
