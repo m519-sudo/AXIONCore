@@ -21130,7 +21130,7 @@ X.root.addEventListener('click',function(ev){
 var st=document.createElement('style');
 st.textContent='#threeDGuidanceOverlay.akBig #guidanceRealMap{left:0!important;top:0!important;width:100%!important;height:100%!important}#threeDGuidanceOverlay.akBig .akPane1{width:50%!important;flex:0 0 50%!important}#threeDGuidanceOverlay.akBig .akPane2{display:none!important}';
 document.head.appendChild(st);
-function ack(m,ok,r){try{window.__akTx({t:'ack',cid:m.cid,ok:ok,reason:r||''})}catch(e){}}
+function ack(m,ok,r,x){var o={t:'ack',cid:m.cid,ok:ok,reason:r||''};if(x)for(var q in x)o[q]=x[q];try{window.__akTx(o)}catch(e){}}
 function bigMap(){
  var o=document.getElementById('threeDGuidanceOverlay'),mm=document.getElementById('guidanceRealMap'),v=document.getElementById('g3dVisPanel');
  if(mm&&mm.parentNode)mm.parentNode.classList.add('akPane1');
@@ -21148,9 +21148,9 @@ window.__akSummon=async function(m){
   if(window.__akNote)__akNote('AXION KEY：車を呼ばれました。ルートを探しています');
   await setDestinationFromLatLng(lat,lon,{autoStart:true});
   if(typeof pendingRouteGeometry==='undefined'||!pendingRouteGeometry){ack(m,false,'ルートを取得できませんでした');return}
-  ack(m,true);
+  ack(m,true,'',(typeof userPos!=='undefined'&&userPos)?{lat:userPos.lat,lon:userPos.lon}:null);
   open3DGuidanceView();
-  bigMap();
+  bigMap();setTimeout(bigMap,1200);setTimeout(bigMap,3500);
   startDemoDrive();
  }catch(e){ack(m,false,'車を動かせませんでした')}
 };
