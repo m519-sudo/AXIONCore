@@ -21202,5 +21202,748 @@ window.__akPark=async function(m){
 };
 })();
 </script>
+<!-- ===== AXION PROFILE / AXION DESKTOP (追加機能・独立モジュール / 既存コードは変更なし) =====
+  ① AXION PROFILE : ドライバーごとの音量・音声案内などの設定を作成・切替・個別保存
+  ② AXION DESKTOP : ホーム画面ウィジェットの追加・削除・並べ替え・サイズ変更・レイアウト保存/復元/初期化
+  保存キー(新規のみ): axion_profiles_v1 / axion_desktop_v1 / axion_desktop_prev_v1 / axion_guidevol_v1
+  既存のホーム画面は「保存済みレイアウトがあるとき」と「編集中」だけ並べ替わる。初期状態では1ミリも変えない -->
+<style id="axpd-css">
+/* ---------- AXION PROFILE (オーバーレイ) ---------- */
+#axpRoot{position:fixed;inset:0;z-index:99997;display:none;flex-direction:column;background:radial-gradient(1200px 700px at 20% -10%,#10213d 0,#06090f 60%);color:#e6eefb;font-family:"Noto Sans JP","Hiragino Sans","Yu Gothic",system-ui,sans-serif;padding-top:env(safe-area-inset-top,0px);opacity:0;transition:opacity .22s}
+#axpRoot.on{display:flex}#axpRoot.vis{opacity:1}
+#axpRoot.light{background:#eef3fa;color:#0b1220}
+.axp-top{display:flex;align-items:center;gap:10px;padding:12px 16px 8px;flex-wrap:wrap}
+.axp-top b{letter-spacing:.3em;font-weight:300;font-size:15px;color:#eef4ff}
+#axpRoot.light .axp-top b{color:#0b1220}
+#axpSub{font-size:11px;letter-spacing:.14em;color:#7cc4ff}
+.axp-body{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding:4px 16px calc(28px + env(safe-area-inset-bottom,0px));width:100%;max-width:980px;margin:0 auto;box-sizing:border-box}
+.axp-b{background:rgba(255,255,255,.1);color:inherit;border:1px solid rgba(255,255,255,.2);border-radius:14px;padding:8px 14px;min-height:44px;font-weight:800;font-size:13px;cursor:pointer}
+.axp-b.p{background:linear-gradient(180deg,#3b82f6,#1d4ed8);border-color:transparent;color:#fff}
+.axp-b.d{color:#fca5a5;border-color:rgba(248,113,113,.5)}
+.axp-b.s{min-height:40px;padding:6px 12px;font-size:12px}
+.axp-b:disabled{opacity:.4}
+#axpRoot.light .axp-b{background:#fff;border-color:#cfd9e8}
+#axpRoot.light .axp-b.p{background:linear-gradient(180deg,#3b82f6,#1d4ed8);color:#fff;border-color:transparent}
+.axp-c{background:linear-gradient(160deg,rgba(255,255,255,.13),rgba(255,255,255,.04));border:1px solid rgba(255,255,255,.17);border-radius:20px;padding:14px;margin-bottom:12px;box-shadow:0 10px 30px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.14);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
+#axpRoot.light .axp-c{background:#fff;border-color:#cfd9e8;box-shadow:none}
+.axp-c h3{font-size:11px;letter-spacing:.16em;color:#7cc4ff;margin:0 0 8px;font-weight:800}
+.axp-s{font-size:12px;opacity:.72;line-height:1.55}
+.axp-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:10px}
+.axp-pfb{width:100%;display:flex;align-items:center;gap:10px;text-align:left;color:inherit;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);border-radius:16px;padding:10px;min-height:58px;cursor:pointer}
+.axp-pfb.sel{border-color:#60a5fa;box-shadow:0 0 0 1px rgba(96,165,250,.6),0 0 16px rgba(60,130,255,.35)}
+#axpRoot.light .axp-pfb{background:#f4f7fc;border-color:#cfd9e8}
+.axp-pn{flex:1;min-width:0;font-weight:800;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.axp-pfb em{font-style:normal;font-size:10px;font-weight:800;border-radius:6px;padding:2px 6px;background:#065f46;color:#a7f3d0;flex:none}
+.axp-av{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;color:#fff;font-weight:800;flex:none;text-shadow:0 1px 4px rgba(0,0,0,.4)}
+.axp-new{display:flex;gap:8px;align-items:center}
+.axp-new input,.axp-eh input,.axp-r select{background:rgba(255,255,255,.1);color:inherit;border:1px solid rgba(255,255,255,.25);border-radius:12px;padding:10px;min-height:44px;font-size:15px;min-width:0;box-sizing:border-box}
+.axp-new input{flex:1}
+.axp-eh{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.axp-eh input{flex:1;font-weight:800}
+#axpRoot.light .axp-new input,#axpRoot.light .axp-eh input,#axpRoot.light .axp-r select{background:#f4f7fc;border-color:#cfd9e8}
+.axp-r select option{color:#000}
+.axp-cols{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 4px}
+.axp-col{width:34px;height:34px;border-radius:50%;border:2px solid rgba(255,255,255,.25);padding:0;cursor:pointer}
+.axp-col.on{border-color:#fff;box-shadow:0 0 0 2px #3b82f6}
+.axp-r{display:flex;align-items:center;justify-content:space-between;gap:10px 14px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.08);min-height:44px;flex-wrap:wrap}
+.axp-r:last-of-type{border-bottom:0}
+.axp-l{font-size:14px;line-height:1.35;flex:1 1 150px;min-width:0}
+.axp-l small{display:block;font-size:11px;opacity:.65;margin-top:2px}
+.axp-seg{display:inline-flex;border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,.22);flex:none;max-width:100%}
+.axp-seg button{background:transparent;color:inherit;border:0;min-height:42px;padding:0 12px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
+.axp-seg button+button{border-left:1px solid rgba(255,255,255,.18)}
+.axp-seg button.on{background:linear-gradient(180deg,#3b82f6,#1d4ed8);color:#fff}
+#axpRoot.light .axp-seg{border-color:#b9c7dc}
+.axp-sw{width:54px;height:32px;border-radius:16px;background:rgba(255,255,255,.22);border:0;position:relative;flex:none;cursor:pointer;padding:0;transition:background .2s}
+.axp-sw i{position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.4);transition:transform .2s}
+.axp-sw.on{background:#2563eb}.axp-sw.on i{transform:translateX(22px)}
+#axpRoot.light .axp-sw{background:#b9c7dc}#axpRoot.light .axp-sw.on{background:#2563eb}
+.axp-rg{display:flex;align-items:center;gap:10px;flex:1 1 200px;max-width:340px}
+.axp-rng{flex:1;min-width:100px;accent-color:#3b82f6;height:34px}
+.axp-o{width:36px;text-align:right;font-weight:800;font-size:14px}
+.axp-act{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+#axpdToast{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom,0px));transform:translate(-50%,18px);z-index:99999;background:rgba(10,18,32,.95);color:#fff;border:1px solid rgba(124,196,255,.55);border-radius:14px;padding:10px 16px;font:700 13px/1.4 system-ui,"Noto Sans JP",sans-serif;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;max-width:90vw;text-align:center}
+#axpdToast.on{opacity:1;transform:translate(-50%,0)}
+@media(max-width:600px){.axp-top{padding:10px 12px 6px}.axp-body{padding:4px 12px calc(28px + env(safe-area-inset-bottom,0px))}.axp-list{grid-template-columns:repeat(2,minmax(0,1fr))}.axp-seg button{padding:0 9px;font-size:12px}.axp-rg{max-width:none}}
+
+/* ---------- AXION DESKTOP (ホーム画面) ---------- */
+#axRoot .hm-tiles.xfRow{grid-template-columns:repeat(auto-fill,minmax(84px,1fr))}
+@media(max-width:600px){#axRoot .hm-tiles.xfRow{grid-template-columns:repeat(auto-fill,minmax(62px,1fr))}}
+.axd-desk{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:clamp(8px,1.4vw,14px);align-items:start}
+.axd-w{position:relative;min-width:0;display:flex;flex-direction:column;border-radius:24px}
+.axd-w>*:not(.axd-ctl){min-width:0;max-width:100%;box-sizing:border-box}
+.axd-w[data-sz=S]{grid-column:span 3}.axd-w[data-sz=M]{grid-column:span 4}.axd-w[data-sz=L]{grid-column:span 6}.axd-w[data-sz=XL]{grid-column:span 8}.axd-w[data-sz=F]{grid-column:span 12}
+@media(max-width:899px){.axd-w[data-sz=S],.axd-w[data-sz=M],.axd-w[data-sz=L]{grid-column:span 6}.axd-w[data-sz=XL],.axd-w[data-sz=F]{grid-column:span 12}}
+@media(max-width:599px){.axd-desk{grid-template-columns:repeat(2,minmax(0,1fr))}.axd-w[data-sz=S]{grid-column:span 1}.axd-w[data-sz=M],.axd-w[data-sz=L],.axd-w[data-sz=XL],.axd-w[data-sz=F]{grid-column:span 2}}
+.axd-w.ed{outline:2px dashed rgba(124,196,255,.7);outline-offset:3px;padding:6px;background:rgba(8,16,32,.38)}
+.axd-w.ed>*:not(.axd-ctl){pointer-events:none;-webkit-user-select:none;user-select:none}
+.axd-w.drag{z-index:60;opacity:.94;box-shadow:0 20px 44px rgba(0,0,0,.55);outline-color:#60a5fa}
+.axd-ctl{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin:0 0 6px;padding:4px;background:rgba(6,12,24,.86);border:1px solid rgba(124,196,255,.45);border-radius:14px;color:#fff;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.axd-grip,.axd-ib{flex:none;display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:11px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);color:#fff;padding:0;cursor:pointer}
+.axd-grip{touch-action:none;cursor:grab;width:42px}
+.axd-ib.x{color:#fca5a5}
+.axd-nm{flex:1 1 70px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:800;color:#dbeafe}
+.axd-sz{flex:none;min-width:34px;text-align:center;font-size:12px;font-weight:800;color:#bfdbfe}
+.axd-bar{position:sticky;top:0;z-index:40;padding:8px 10px;background:rgba(6,12,24,.9);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border:1px solid rgba(124,196,255,.45);border-radius:18px;display:grid;gap:8px;color:#e6eefb}
+.axd-bar1{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.axd-bar1 b{letter-spacing:.2em;font-size:12px;color:#7cc4ff}
+.axd-dirty{font-size:11px;font-weight:800;padding:2px 8px;border-radius:8px;background:#065f46;color:#a7f3d0}
+.axd-dirty.on{background:#78350f;color:#fde68a}
+.axd-bar2{display:flex;flex-wrap:wrap;gap:6px}
+.axd-b{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:8px 12px;min-height:42px;font-weight:800;font-size:13px;cursor:pointer}
+.axd-b.p{background:linear-gradient(180deg,#3b82f6,#1d4ed8);border-color:transparent}
+.axd-b.d{color:#fca5a5}
+.axd-b:disabled{opacity:.4}
+.axd-hint{font-size:11px;opacity:.75;line-height:1.5}
+.axd-add{border-top:1px solid rgba(255,255,255,.15);padding-top:8px;display:grid;gap:6px}
+.axd-addh{font-size:11px;letter-spacing:.14em;color:#7cc4ff;font-weight:800}
+.axd-ai{display:flex;align-items:center;gap:10px;text-align:left;color:#fff;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:8px 10px;min-height:48px;cursor:pointer}
+.axd-ai b{display:block;font-size:13px}.axd-ai small{display:block;font-size:11px;opacity:.7}
+.axd-ap{flex:none;display:inline-flex;width:30px;height:30px;border-radius:50%;align-items:center;justify-content:center;background:#2563eb}
+.axd-none{font-size:12px;opacity:.7}
+.axd-foot{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.axd-fb{background:transparent;border:1px solid rgba(255,255,255,.22);color:inherit;opacity:.78;border-radius:12px;padding:6px 14px;min-height:40px;font-size:12px;font-weight:700;cursor:pointer}
+.axd-pm{display:flex;gap:12px;align-items:center;margin:2px 0 10px}
+.axd-pc{margin-top:8px}
+.axd-chips{display:flex;flex-wrap:wrap;gap:6px}
+.axd-chip{display:inline-flex;align-items:center;gap:6px;color:inherit;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:6px 12px;min-height:40px;font-size:13px;font-weight:700;cursor:pointer}
+.axd-chip i{width:12px;height:12px;border-radius:50%;display:inline-block}
+.axd-chip.on{border-color:#60a5fa;background:rgba(40,110,255,.35);box-shadow:0 0 12px rgba(50,120,255,.4)}
+#axRoot.light .axd-bar,#axRoot.light .axd-ctl{background:rgba(255,255,255,.94);color:#0b1220}
+#axRoot.light .axd-b,#axRoot.light .axd-ib,#axRoot.light .axd-grip{background:#eef3fa;color:#0b1220;border-color:#cfd9e8}
+#axRoot.light .axd-b.p{background:linear-gradient(180deg,#3b82f6,#1d4ed8);color:#fff;border-color:transparent}
+#axRoot.light .axd-nm,#axRoot.light .axd-sz{color:#1e3a8a}
+#axRoot.light .axd-ai{background:#f4f7fc;color:#0b1220;border-color:#cfd9e8}
+#axRoot.light .axd-chip{background:#fff;border-color:#cfd9e8}
+</style>
+<div id="axpRoot" role="dialog" aria-label="AXION PROFILE" aria-modal="true"><div class="axp-top"><b>AXION PROFILE</b><span id="axpSub"></span><span style="flex:1"></span><button type="button" class="axp-b" data-axpa="close">閉じる</button></div><div class="axp-body" id="axpBody"></div></div>
+<script id="axProfileDesktopJs">
+(function(){
+"use strict";
+var X=window.AXION&&window.AXION.ext;
+if(!X||!X.root||!X.V||!X.S)return;
+var S=X.S,ROOT=X.root,BODY=document.getElementById("axBody");
+if(!BODY)return;
+
+/* ---------------- 共通 ---------------- */
+function g(f,d){try{var v=f();return(v===undefined||v===null)?d:v}catch(e){return d}}
+function $(i){return document.getElementById(i)}
+function esc(t){return String(t==null?"":t).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function clone(o){return JSON.parse(JSON.stringify(o))}
+function clamp(v,a,b){v=+v;if(isNaN(v))v=a;return Math.max(a,Math.min(b,v))}
+function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function lsSet(k,v){try{localStorage.setItem(k,v);return true}catch(e){return false}}
+function lsDel(k){try{localStorage.removeItem(k)}catch(e){}}
+function svg(p,s){s=s||18;return'<svg viewBox="0 0 24 24" width="'+s+'" height="'+s+'" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+p+'</svg>'}
+var IC={
+ grip:'<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><circle cx="9" cy="6" r="1.8"/><circle cx="15" cy="6" r="1.8"/><circle cx="9" cy="12" r="1.8"/><circle cx="15" cy="12" r="1.8"/><circle cx="9" cy="18" r="1.8"/><circle cx="15" cy="18" r="1.8"/></svg>',
+ minus:svg('<path d="M5 12h14"/>'),plus:svg('<path d="M12 5v14M5 12h14"/>'),close:svg('<path d="M6 6l12 12M18 6L6 18"/>'),
+ up:svg('<path d="M12 19V5M6 11l6-6 6 6"/>'),down:svg('<path d="M12 5v14M6 13l6 6 6-6"/>')
+};
+var tT=0;
+function toast(m){var t=$("axpdToast");if(!t){t=document.createElement("div");t.id="axpdToast";t.setAttribute("role","status");document.body.appendChild(t)}t.textContent=m;t.classList.add("on");clearTimeout(tT);tT=setTimeout(function(){t.classList.remove("on")},2800)}
+function refreshHome(){try{X.render()}catch(e){}}
+
+/* =====================================================================
+   ① AXION PROFILE
+   ===================================================================== */
+/* 案内音声の音量(新規): 既存の読み上げ関数を包んで、音量1のときだけ掛ける。100%のときは何もしない */
+var GV=100;
+(function(){var v=lsGet("axion_guidevol_v1");if(v!==null&&v!=="")GV=clamp(v,0,100)})();
+function setGV(v){GV=clamp(v,0,100);lsSet("axion_guidevol_v1",String(GV))}
+(function(){try{var ss=window.speechSynthesis;if(!ss||ss.__axpWrapped)return;var prev=ss.speak;
+ ss.speak=function(u){try{if(u&&GV<100&&u.volume===1)u.volume=GV/100}catch(e){}return prev.apply(ss,arguments)};ss.__axpWrapped=true}catch(e){}})();
+
+/* いまの設定を読み取る(読めない項目は含めない=既存の値を壊さない) */
+function capture(){
+ var c={};
+ c.vol=clamp(S.vol==null?70:S.vol,0,100);
+ c.voice=S.voice!==false;
+ c.notify=S.notify!==false;
+ c.theme=S.theme==="light"?"light":"dark";
+ c.guideVol=GV;
+ var vm=g(function(){return VOICE_MODE},null);if(vm==="voice"||vm==="chime"||vm==="off")c.voiceMode=vm;
+ var sp=g(function(){return SPEECH_SPEED},null);if(sp==="slow"||sp==="normal"||sp==="fast")c.voiceSpeed=sp;
+ c.voiceName=lsGet("voiceName")||"";
+ var vv=g(function(){return VIS.voice},null);if(vv!==null)c.visVoice=!!vv;
+ c.signVoice=lsGet("signVoice")!=="0";
+ var dm=g(function(){return driveGuideMuted},null);if(dm!==null)c.driveChime=!dm;
+ var hw=g(function(){return hwFarGuide},null);if(hw!==null)c.hwFar=!!hw;
+ var ph=g(function(){return turnPhraseStyle},null);if(ph==="plain"||ph==="junction"||ph==="signal")c.phrase=ph;
+ return c;
+}
+/* 設定を適用する。既存の保存先(localStorage)と既存の変数に、既存コードと同じやり方で書く(音は鳴らさない) */
+function apply(s,o){
+ o=o||{};var needRender=!!o.render;
+ try{
+  if(s.vol!=null){S.vol=clamp(s.vol,0,100);try{X.au.volume=S.vol/100}catch(e){}}
+  if(s.voice!=null)S.voice=!!s.voice;
+  if(s.notify!=null)S.notify=!!s.notify;
+  if(s.theme==="light"||s.theme==="dark"){if(S.theme!==s.theme)needRender=true;S.theme=s.theme}
+  X.save();
+ }catch(e){}
+ if(s.guideVol!=null)setGV(s.guideVol);
+ if(s.voiceMode==="voice"||s.voiceMode==="chime"||s.voiceMode==="off"){try{VOICE_MODE=s.voiceMode;lsSet("voiceMode",s.voiceMode);try{window.speechSynthesis&&window.speechSynthesis.cancel()}catch(e){}try{refreshVoiceModeUI()}catch(e){}}catch(e){}}
+ if(s.voiceSpeed){try{if(SPEECH_SPEEDS[s.voiceSpeed]){SPEECH_SPEED=s.voiceSpeed;SPEECH_RATE=SPEECH_SPEEDS[s.voiceSpeed];lsSet("voiceSpeed",s.voiceSpeed);var sel=$("voiceSpeed");if(sel)sel.value=s.voiceSpeed}}catch(e){}}
+ if(s.voiceName!=null){try{if(s.voiceName)lsSet("voiceName",s.voiceName);else lsDel("voiceName");try{refreshJaVoices()}catch(e){}}catch(e){}}
+ if(s.visVoice!=null){try{VIS.voice=!!s.visVoice;lsSet("visVoice",s.visVoice?"on":"off");try{refreshVisVoiceButtons()}catch(e){}}catch(e){}}
+ if(s.signVoice!=null){try{lsSet("signVoice",s.signVoice?"1":"0");var cb=$("toggleSignVoice");if(cb)cb.checked=!!s.signVoice}catch(e){}}
+ if(s.driveChime!=null){try{driveGuideMuted=!s.driveChime;lsSet("driveGuideMuted",driveGuideMuted?"1":"0");try{renderDriveMuteBtn()}catch(e){}}catch(e){}}
+ if(s.hwFar!=null){try{hwFarGuide=!!s.hwFar;lsSet("hwFarGuide",s.hwFar?"1":"0");try{syncHwFarGuideButtons()}catch(e){}}catch(e){}}
+ if(s.phrase==="plain"||s.phrase==="junction"||s.phrase==="signal"){try{turnPhraseStyle=s.phrase;lsSet("turnPhraseStyle",s.phrase)}catch(e){}}
+ try{ROOT.classList.toggle("light",S.theme==="light");PR.classList.toggle("light",S.theme==="light")}catch(e){}
+ if(needRender)refreshHome();
+}
+
+/* ---- プロフィールのデータ ---- */
+var PK="axion_profiles_v1";
+var COLORS=["#3b82f6","#10b981","#f59e0b","#ef4444","#a855f7","#ec4899","#14b8a6","#64748b"];
+var PF=(function(){
+ var j=null;try{j=JSON.parse(lsGet(PK)||"null")}catch(e){}
+ if(!j||!Array.isArray(j.list))j={v:1,active:null,list:[]};
+ j.list=j.list.filter(function(p){return p&&p.id&&p.settings&&typeof p.settings==="object"});
+ if(j.active&&!j.list.some(function(p){return p.id===j.active}))j.active=null;
+ return j;
+})();
+function savePF(){if(!lsSet(PK,JSON.stringify(PF)))toast("プロフィールを保存できませんでした")}
+var sdT=0;function savePFDeb(){clearTimeout(sdT);sdT=setTimeout(savePF,250)}
+function byId(id){for(var i=0;i<PF.list.length;i++)if(PF.list[i].id===id)return PF.list[i];return null}
+function activeP(){return PF.active?byId(PF.active):null}
+function newId(){return"p"+Date.now().toString(36)+Math.floor(Math.random()*1296).toString(36)}
+/* 使用中プロフィールには「いまの設定」を常に反映(既存の設定画面で変えた分も、そのドライバーの設定として残る) */
+function syncActive(){
+ var a=activeP();if(!a)return;
+ var c=capture(),ch=false;
+ Object.keys(c).forEach(function(k){if(a.settings[k]!==c[k]){a.settings[k]=c[k];ch=true}});
+ if(ch)savePF();
+}
+setInterval(syncActive,5000);
+document.addEventListener("visibilitychange",function(){if(document.hidden){syncActive();savePF()}});
+window.addEventListener("pagehide",function(){syncActive();savePF()});
+
+function createP(name){
+ name=String(name||"").trim().slice(0,12);
+ if(!name){toast("名前を入れてください");return null}
+ if(PF.list.length>=8){toast("プロフィールは8人まで作れます");return null}
+ if(PF.list.some(function(p){return p.name===name})){toast("同じ名前があります");return null}
+ syncActive();
+ var p={id:newId(),name:name,color:COLORS[PF.list.length%COLORS.length],settings:capture(),useLayout:false,layout:null,t:Date.now()};
+ PF.list.push(p);
+ if(!PF.active)PF.active=p.id;
+ savePF();
+ return p;
+}
+function announce(p){
+ try{if(p.settings.voiceMode==="voice"&&typeof speak==="function")speak(p.name+"さんのプロフィールに切り替えました。",{force:true})}catch(e){}
+}
+function switchP(id){
+ var t=byId(id);if(!t)return;
+ if(PF.active===id){toast("「"+t.name+"」を使用中です");return}
+ syncActive();
+ PF.active=id;savePF();
+ apply(t.settings,{render:true});
+ if(t.useLayout)DK.setSaved(t.layout||null);
+ announce(t);
+ toast("「"+t.name+"」に切り替えました");
+}
+function sumLine(s){
+ var vm={voice:"音声",chime:"効果音のみ",off:"消音"},sp={slow:"ゆっくり",normal:"ふつう",fast:"はやい"};
+ return"音量 "+(s.vol==null?"--":s.vol)+" ／ 案内 "+(vm[s.voiceMode]||"--")+" ／ 速さ "+(sp[s.voiceSpeed]||"--");
+}
+function av(p,size){
+ var ch=Array.from(String(p.name||"?"))[0]||"?";
+ return'<span class="axp-av" style="width:'+size+'px;height:'+size+'px;font-size:'+Math.round(size*.46)+'px;background:'+esc(p.color)+'">'+esc(ch)+'</span>';
+}
+
+/* ---- プロフィール画面 ---- */
+var PR=$("axpRoot"),PB=$("axpBody");
+var P={sel:null};
+function pSel(){var s=P.sel&&byId(P.sel);if(!s){s=activeP()||PF.list[0]||null;P.sel=s?s.id:null}return s}
+function jaVoices(){
+ var l=g(function(){return JA_VOICE.list},null),out=[];
+ if(l&&l.length){l.forEach(function(v){out.push({id:v.voiceURI||v.name,n:String(v.name||"").replace(/^Microsoft\s+/i,"").slice(0,30)})});return out}
+ var all=g(function(){return window.speechSynthesis.getVoices()},[]);
+ all.forEach(function(v){if(/^ja/i.test(String(v.lang||"").replace("_","-")))out.push({id:v.voiceURI||v.name,n:String(v.name||"").replace(/^Microsoft\s+/i,"").slice(0,30)})});
+ return out;
+}
+function seg(k,opts,val){return'<div class="axp-seg" role="group">'+opts.map(function(o){return'<button type="button" class="'+(String(val)===o[0]?"on":"")+'" data-axpa="set" data-k="'+k+'" data-v="'+o[0]+'">'+o[1]+'</button>'}).join("")+'</div>'}
+function swt(k,on){return'<button type="button" class="axp-sw'+(on?" on":"")+'" role="switch" aria-checked="'+(on?"true":"false")+'" data-axpa="tog" data-k="'+k+'"><i></i></button>'}
+function rng(k,v){return'<div class="axp-rg"><input type="range" class="axp-rng" min="0" max="100" step="1" value="'+v+'" data-axpr="'+k+'"><output class="axp-o">'+v+'</output></div>'}
+function rowH(l,sub,ctl){return'<div class="axp-r"><div class="axp-l">'+l+(sub?'<small>'+sub+'</small>':"")+'</div>'+ctl+'</div>'}
+function renderP(){
+ var y=PB.scrollTop,sel=pSel(),act=activeP(),h="";
+ h+='<div class="axp-c"><h3>ドライバー</h3>';
+ if(PF.list.length){
+  h+='<div class="axp-list">'+PF.list.map(function(p){return'<button type="button" class="axp-pfb'+(sel&&p.id===sel.id?" sel":"")+'" data-axpa="sel" data-id="'+p.id+'">'+av(p,38)+'<span class="axp-pn">'+esc(p.name)+'</span>'+(p.id===PF.active?'<em>使用中</em>':"")+'</button>'}).join("")+'</div>';
+ }else{
+  h+='<div class="axp-s" style="margin-bottom:10px">まだプロフィールがありません。名前を入れて作ると、いまの音量・音声案内の設定がそのまま保存されます。</div>';
+ }
+ h+='<div class="axp-new"><input id="axpNew" type="text" maxlength="12" placeholder="名前(例: 父)" autocomplete="off" aria-label="新しいプロフィールの名前"><button type="button" class="axp-b p" data-axpa="new">追加</button></div></div>';
+ if(sel){
+  var s=sel.settings,isAct=sel.id===PF.active,vs=jaVoices();
+  h+='<div class="axp-c"><h3>'+(isAct?"使用中のプロフィール":"編集中のプロフィール")+'</h3>';
+  h+='<div class="axp-eh">'+av(sel,44)+'<input id="axpName" type="text" maxlength="12" value="'+esc(sel.name)+'" aria-label="プロフィール名"></div>';
+  h+='<div class="axp-cols">'+COLORS.map(function(c){return'<button type="button" class="axp-col'+(sel.color===c?" on":"")+'" style="background:'+c+'" data-axpa="color" data-v="'+c+'" aria-label="色"></button>'}).join("")+'</div>';
+  h+='<div class="axp-s" style="margin:6px 0 2px">'+(isAct?"この画面での変更は、すぐに本体へ反映されます。":"このプロフィールに切り替えたときに反映されます。")+'</div>';
+  h+='<div class="axp-act" style="margin:8px 0 4px">'+(isAct?'<button type="button" class="axp-b s" data-axpa="test">声を試す</button>':'<button type="button" class="axp-b p s" data-axpa="sw" data-id="'+sel.id+'">このプロフィールに切り替え</button><button type="button" class="axp-b s" data-axpa="copylive">いまの設定をコピー</button>')+'</div>';
+  h+='<h3 style="margin-top:12px">音量</h3>';
+  h+=rowH("AXION 音量","音楽・音声応答",rng("vol",clamp(s.vol==null?70:s.vol,0,100)));
+  h+=rowH("案内音声の音量","ナビの声(100%でいつもどおり)",rng("guideVol",clamp(s.guideVol==null?100:s.guideVol,0,100)));
+  h+='<h3 style="margin-top:12px">音声案内</h3>';
+  h+=rowH("案内の出し方","",seg("voiceMode",[["voice","音声"],["chime","効果音のみ"],["off","消音"]],s.voiceMode||"voice"));
+  h+=rowH("話す速さ","",seg("voiceSpeed",[["slow","ゆっくり"],["normal","ふつう"],["fast","はやい"]],s.voiceSpeed||"normal"));
+  h+=rowH("声の種類","この端末にある日本語の声",'<select data-axps="voiceName" aria-label="声の種類"><option value="">おまかせ</option>'+vs.map(function(v){return'<option value="'+esc(v.id)+'"'+(s.voiceName===v.id?" selected":"")+'>'+esc(v.n)+'</option>'}).join("")+(s.voiceName&&!vs.some(function(v){return v.id===s.voiceName})?'<option value="'+esc(s.voiceName)+'" selected>'+esc(String(s.voiceName).slice(0,24))+'</option>':"")+'</select>');
+  h+=rowH("案内の言い回し","「右です」/「この交差点を右です」/「この信号を右です」",seg("phrase",[["plain","短く"],["junction","交差点"],["signal","信号"]],s.phrase||"junction"));
+  h+=rowH("高速の先読み案内","高速道路で約1km先から案内",swt("hwFar",s.hwFar!==false));
+  h+=rowH("視覚情報の音声","",swt("visVoice",s.visVoice!==false));
+  h+=rowH("標識の読み上げ","",swt("signVoice",s.signVoice!==false));
+  h+=rowH("ドライブ案内音","ドライブに入れるまでの「ポンポン」",swt("driveChime",s.driveChime!==false));
+  h+='<h3 style="margin-top:12px">AXION</h3>';
+  h+=rowH("音声応答","",swt("voice",s.voice!==false));
+  h+=rowH("通知バッジ","",swt("notify",s.notify!==false));
+  h+=rowH("テーマ","",seg("theme",[["dark","ダーク"],["light","ライト"]],s.theme||"dark"));
+  h+='<h3 style="margin-top:12px">ホーム画面</h3>';
+  h+=rowH("ホームの配置もこのプロフィールで切り替える",sel.useLayout?(sel.layout?"保存した配置を使います":"初期の配置を使います"):"オフのときは、いまの配置のままです",swt("useLayout",!!sel.useLayout));
+  if(sel.useLayout)h+='<div class="axp-act" style="margin-top:6px"><button type="button" class="axp-b s" data-axpa="laysnap">いまのホーム配置をこのプロフィールに保存</button></div>';
+  h+='<div class="axp-act"><button type="button" class="axp-b d s" data-axpa="del">このプロフィールを削除</button></div></div>';
+ }
+ PB.innerHTML=h;PB.scrollTop=y;
+ var sub=$("axpSub");if(sub)sub.textContent=act?"使用中: "+act.name:"";
+}
+var P_open=function(){
+ syncActive();
+ PR.classList.toggle("light",S.theme==="light");
+ PR.classList.add("on");renderP();
+ requestAnimationFrame(function(){PR.classList.add("vis")});
+};
+var P_close=function(){savePF();PR.classList.remove("vis");setTimeout(function(){PR.classList.remove("on")},230)};
+P.open=P_open;P.close=P_close;
+
+function setField(p,k,v){
+ p.settings[k]=v;savePF();
+ if(p.id===PF.active){var o={};o[k]=v;apply(o)}
+}
+PR.addEventListener("click",function(e){
+ var t=e.target.closest&&e.target.closest("[data-axpa]");if(!t)return;
+ var a=t.getAttribute("data-axpa"),p=pSel(),k=t.getAttribute("data-k"),v=t.getAttribute("data-v");
+ if(a==="close"){P_close();return}
+ if(a==="new"){var np=createP($("axpNew").value);if(np){P.sel=np.id;renderP();refreshHome();toast("「"+np.name+"」を作りました")}return}
+ if(a==="sel"){P.sel=t.getAttribute("data-id");renderP();return}
+ if(a==="sw"){switchP(t.getAttribute("data-id"));P.sel=t.getAttribute("data-id");renderP();return}
+ if(!p)return;
+ if(a==="set"){setField(p,k,v);renderP();return}
+ if(a==="tog"){
+  if(k==="useLayout"){p.useLayout=!p.useLayout;if(p.useLayout)p.layout=DK.savedCopy();savePF();renderP();return}
+  setField(p,k,!(p.settings[k]!==false));renderP();return;
+ }
+ if(a==="color"){p.color=v;savePF();renderP();refreshHome();return}
+ if(a==="test"){try{speak("およそ300メートル先、右方向です。",{force:true})}catch(err){toast("この端末では声を出せません")}return}
+ if(a==="copylive"){p.settings=capture();savePF();renderP();toast("いまの設定をコピーしました");return}
+ if(a==="laysnap"){p.layout=DK.savedCopy();savePF();renderP();toast("ホームの配置を保存しました");return}
+ if(a==="del"){
+  if(!confirm("「"+p.name+"」を削除しますか?\n(いまの設定はそのまま残ります)"))return;
+  PF.list=PF.list.filter(function(x){return x.id!==p.id});
+  if(PF.active===p.id)PF.active=null;
+  P.sel=null;savePF();renderP();refreshHome();toast("削除しました");
+ }
+});
+PR.addEventListener("input",function(e){
+ var t=e.target;if(!t.getAttribute||!t.hasAttribute("data-axpr"))return;
+ var p=pSel();if(!p)return;
+ var k=t.getAttribute("data-axpr"),v=clamp(t.value,0,100);
+ p.settings[k]=v;var o=t.parentNode.querySelector("output");if(o)o.textContent=v;
+ savePFDeb();
+ if(p.id===PF.active){var ap={};ap[k]=v;apply(ap)}
+});
+PR.addEventListener("change",function(e){
+ var t=e.target,p=pSel();if(!p||!t)return;
+ if(t.id==="axpName"){
+  var nm=String(t.value||"").trim().slice(0,12);
+  if(!nm||PF.list.some(function(x){return x.id!==p.id&&x.name===nm})){toast(nm?"同じ名前があります":"名前を入れてください");t.value=p.name;return}
+  p.name=nm;savePF();renderP();refreshHome();return;
+ }
+ if(t.getAttribute&&t.getAttribute("data-axps")==="voiceName"){setField(p,"voiceName",t.value||"");}
+});
+PR.addEventListener("keydown",function(e){if(e.key==="Enter"&&e.target.id==="axpNew"){e.preventDefault();var np=createP(e.target.value);if(np){P.sel=np.id;renderP();refreshHome();toast("「"+np.name+"」を作りました")}}});
+document.addEventListener("keydown",function(e){if(e.key==="Escape"&&PR.classList.contains("on"))P_close()});
+
+/* =====================================================================
+   ② AXION DESKTOP
+   ===================================================================== */
+var DKEY="axion_desktop_v1",DPREV="axion_desktop_prev_v1";
+var CAT=[
+ {id:"hero",n:"時計・天気",d:"時刻・日付・現在地の天気",sz:["L","XL","F"],def:"F"},
+ {id:"tiles",n:"メインメニュー",d:"ナビ・ルート・ミュージックなど",sz:["L","XL","F"],def:"XL",fixed:true},
+ {id:"dest",n:"目的地",d:"設定中の目的地と残り距離",sz:["S","M","L"],def:"M"},
+ {id:"xf",n:"AXION機能",d:"先読み注意・ルート分析・駐車場など",sz:["L","XL","F"],def:"XL"},
+ {id:"music",n:"ミュージック",d:"再生中の曲と操作ボタン",sz:["M","L"],def:"M"},
+ {id:"notif",n:"通知",d:"未確認の通知の数",sz:["S","M"],def:"M"},
+ {id:"tires",n:"タイヤ空気圧",d:"4輪の空気圧",sz:["M","L","XL"],def:"XL"},
+ {id:"strip",n:"車両状態",d:"燃料・走行距離・点検など",sz:["XL","F"],def:"F"},
+ {id:"prof",n:"AXION PROFILE",d:"ドライバーの切り替え",sz:["S","M","L"],def:"M",isNew:true}
+];
+var CM={};CAT.forEach(function(c){CM[c.id]=c});
+var SZ={S:"小",M:"中",L:"大",XL:"特大",F:"全幅"};
+function norm(l){
+ var o=[],seen={};
+ ((l&&l.order)||[]).forEach(function(id){if(CM[id]&&!seen[id]){seen[id]=1;o.push(id)}});
+ if(!seen.tiles)o.unshift("tiles");
+ var sz={};
+ o.forEach(function(id){var s=l&&l.size&&l.size[id];sz[id]=CM[id].sz.indexOf(s)>=0?s:CM[id].def});
+ return{v:1,order:o,size:sz};
+}
+function defLayout(){return norm({order:CAT.filter(function(c){return!c.isNew}).map(function(c){return c.id})})}
+function loadL(k){var j=null;try{j=JSON.parse(lsGet(k)||"null")}catch(e){}return(j&&Array.isArray(j.order))?norm(j):null}
+var DS={saved:loadL(DKEY),prev:loadL(DPREV),work:null,editing:false,addOpen:false};
+function dirty(){return JSON.stringify(norm(DS.work))!==JSON.stringify(DS.saved?norm(DS.saved):defLayout())}
+
+var DK={
+ savedCopy:function(){return DS.saved?clone(DS.saved):null},
+ /* 保存済みレイアウトを差し替える(null=初期状態に戻す) */
+ setSaved:function(l){
+  if(l){DS.saved=norm(l);lsSet(DKEY,JSON.stringify(DS.saved))}else{DS.saved=null;lsDel(DKEY)}
+  DS.editing=false;DS.work=null;DS.addOpen=false;refreshHome();
+ }
+};
+function startEdit(){
+ DS.editing=true;DS.work=clone(DS.saved?norm(DS.saved):defLayout());DS.addOpen=false;
+ if(g(function(){return X.cur()},"")!=="HOME")X.go("HOME");else refreshHome();
+}
+function endEdit(){DS.editing=false;DS.work=null;DS.addOpen=false;refreshHome()}
+function saveWork(){
+ var l=norm(DS.work);
+ if(DS.saved){DS.prev=clone(DS.saved);lsSet(DPREV,JSON.stringify(DS.prev))}
+ DS.saved=l;
+ if(!lsSet(DKEY,JSON.stringify(l))){toast("配置を保存できませんでした");return}
+ var a=activeP();if(a&&a.useLayout){a.layout=clone(l);savePF()}
+ DS.work=clone(l);
+ toast("ホームの配置を保存しました");refreshBar();
+}
+function resetAll(){
+ if(!confirm("ホームの配置を初期状態に戻しますか?\n(いまの保存内容は「ひとつ前」として残ります)"))return;
+ if(DS.saved){DS.prev=clone(DS.saved);lsSet(DPREV,JSON.stringify(DS.prev))}
+ var a=activeP();if(a&&a.useLayout){a.layout=null;savePF()}
+ DK.setSaved(null);toast("ホームを初期状態に戻しました");
+}
+
+/* ---- 画面の組み立て ---- */
+var DR=null,LOCK=false;
+function tIc(p){return'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+p+'</svg>'}
+function addEntryTiles(hm){
+ var row=hm.querySelector(".hm-tiles.xfRow");
+ if(!row||row.querySelector('[data-axp="open"]'))return;
+ row.insertAdjacentHTML("beforeend",
+  '<button type="button" class="hm-tile" data-axp="open">'+tIc('<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>')+'<span>PROFILE</span></button>'+
+  '<button type="button" class="hm-tile'+(DS.editing?" on":"")+'" data-axd="edit">'+tIc('<rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="5" rx="2"/><rect x="13" y="10" width="8" height="11" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/>')+'<span>DESKTOP</span></button>');
+}
+function findEls(hm){
+ var e={},t=hm.querySelectorAll(".hm-tiles"),i;
+ for(i=0;i<t.length;i++){if(t[i].classList.contains("xfRow")){if(!e.xf)e.xf=t[i]}else if(!e.tiles)e.tiles=t[i]}
+ for(i=0;i<hm.children.length;i++){var c=hm.children[i];if(c.classList.contains("hm-hero"))e.hero=c;else if(c.classList.contains("hm-strip"))e.strip=c}
+ e.dest=hm.querySelector('.hm-side>button.hm-card[data-x="navi"]')||hm.querySelector(".hm-side>.hm-card");
+ var mus=hm.querySelector(".hm-mus");e.music=mus?mus.closest(".hm-card"):null;
+ e.notif=hm.querySelector(".hm-notif");
+ e.tires=hm.querySelector(".hm-tires");
+ return e;
+}
+function profEl(){
+ var d=document.createElement("div");d.className="hm-card axd-prof";
+ var a=activeP(),h="<h4>AXION PROFILE</h4>";
+ if(!PF.list.length){
+  h+='<div class="hm-big">未登録</div><div class="hm-sub">ドライバーごとの音量・音声案内を保存できます</div><div class="axd-pc"><button type="button" class="axb" data-axp="open">プロフィールを作る</button></div>';
+ }else{
+  h+='<div class="axd-pm">'+(a?av(a,44)+'<div style="min-width:0"><div class="hm-big">'+esc(a.name)+'</div><div class="hm-sub">'+esc(sumLine(a.settings))+'</div></div>':'<div style="min-width:0"><div class="hm-big">未選択</div><div class="hm-sub">ドライバーを選んでください</div></div>')+'</div>';
+  h+='<div class="axd-chips">'+PF.list.map(function(p){return'<button type="button" class="axd-chip'+(p.id===PF.active?" on":"")+'" data-axp="sw" data-id="'+p.id+'"><i style="background:'+esc(p.color)+'"></i>'+esc(p.name)+'</button>'}).join("")+'<button type="button" class="axd-chip" data-axp="open">管理</button></div>';
+ }
+ d.innerHTML=h;return d;
+}
+function ctlHtml(c,sz){
+ var multi=c.sz.length>1,id=c.id;
+ return'<div class="axd-ctl"><button type="button" class="axd-grip" aria-label="'+esc(c.n)+'をドラッグして並べ替え">'+IC.grip+'</button><span class="axd-nm">'+esc(c.n)+'</span>'+
+  '<button type="button" class="axd-ib" data-axd="up" data-id="'+id+'" aria-label="前へ">'+IC.up+'</button>'+
+  '<button type="button" class="axd-ib" data-axd="down" data-id="'+id+'" aria-label="後ろへ">'+IC.down+'</button>'+
+  (multi?'<button type="button" class="axd-ib" data-axd="sz-" data-id="'+id+'" aria-label="小さくする">'+IC.minus+'</button><span class="axd-sz">'+SZ[sz]+'</span><button type="button" class="axd-ib" data-axd="sz+" data-id="'+id+'" aria-label="大きくする">'+IC.plus+'</button>':"")+
+  (c.fixed?"":'<button type="button" class="axd-ib x" data-axd="rm" data-id="'+id+'" aria-label="削除">'+IC.close+'</button>')+'</div>';
+}
+function addHtml(){
+ var vis={};DS.work.order.forEach(function(id){vis[id]=1});
+ var hid=CAT.filter(function(c){return!vis[c.id]});
+ return'<div class="axd-add"><div class="axd-addh">追加できるウィジェット</div>'+(hid.length?hid.map(function(c){return'<button type="button" class="axd-ai" data-axd="add" data-id="'+c.id+'"><span class="axd-ap">'+IC.plus+'</span><span><b>'+esc(c.n)+'</b><small>'+esc(c.d)+'</small></span></button>'}).join(""):'<div class="axd-none">追加できるウィジェットはありません</div>')+'</div>';
+}
+function barEl(){
+ var d=document.createElement("div");d.className="axd-bar";
+ d.innerHTML='<div class="axd-bar1"><b>AXION DESKTOP</b><span class="axd-dirty" id="axdDirty"></span></div>'+
+  '<div class="axd-bar2"><button type="button" class="axd-b p" data-axd="save">保存</button><button type="button" class="axd-b" data-axd="revert">保存済みに戻す</button><button type="button" class="axd-b" data-axd="prev">ひとつ前に戻す</button><button type="button" class="axd-b" data-axd="addp">'+(DS.addOpen?"追加を閉じる":"追加")+'</button><button type="button" class="axd-b d" data-axd="reset">初期化</button><button type="button" class="axd-b" data-axd="done">完了</button></div>'+
+  (DS.addOpen?addHtml():"")+
+  '<div class="axd-hint">左のつまみをドラッグで並べ替え、「−」「+」で大きさを変えられます。保存を押すまで確定しません。</div>';
+ return d;
+}
+function refreshBar(){
+ var d=dirty(),el=$("axdDirty");
+ if(el){el.textContent=d?"未保存の変更あり":"保存済み";el.classList.toggle("on",d)}
+ var q=function(a){return BODY.querySelector('[data-axd="'+a+'"]')};
+ var s=q("save");if(s)s.disabled=!d;
+ var r=q("revert");if(r)r.disabled=!d;
+ var p=q("prev");if(p)p.disabled=!DS.prev;
+}
+function build(hm){
+ var L=DS.editing?DS.work:DS.saved;
+ if(!L)return;                       /* 保存済みレイアウトなし=既存のホームのまま */
+ var els=findEls(hm),ed=DS.editing;
+ var desk=document.createElement("div");desk.className="axd-desk";
+ L.order.forEach(function(id){
+  var c=CM[id],el=id==="prof"?profEl():els[id];
+  if(!c||!el)return;
+  var w=document.createElement("div");
+  w.className="axd-w"+(ed?" ed":"");w.setAttribute("data-id",id);
+  var sz=L.size[id]||c.def;w.setAttribute("data-sz",sz);
+  if(ed)w.insertAdjacentHTML("afterbegin",ctlHtml(c,sz));
+  w.appendChild(el);desk.appendChild(w);
+ });
+ for(var i=0;i<hm.children.length;i++){
+  var ch=hm.children[i];
+  if(ch.classList&&(ch.classList.contains("hm-hero")||ch.classList.contains("hm-main")||ch.classList.contains("hm-strip")))ch.style.display="none";
+ }
+ var first=hm.firstChild;
+ if(ed)hm.insertBefore(barEl(),first);
+ hm.insertBefore(desk,first);
+ if(!ed){
+  var f=document.createElement("div");f.className="axd-foot";
+  f.innerHTML='<button type="button" class="axd-fb" data-axd="edit">ホームを編集</button><button type="button" class="axd-fb" data-axd="reset">初期化</button>';
+  hm.insertBefore(f,first);
+ }
+ if(ed)refreshBar();
+}
+function applyDesktop(){
+ if(LOCK)return;
+ if(ROOT.getAttribute("data-view")!=="HOME")return;
+ var hm=BODY.querySelector(".hm");
+ if(!hm||hm.getAttribute("data-axdone"))return;
+ hm.setAttribute("data-axdone","1");
+ if(DR)dragEnd(true);
+ LOCK=true;
+ try{addEntryTiles(hm);build(hm)}catch(e){try{console.error(e)}catch(x){}}
+ finally{LOCK=false}
+}
+new MutationObserver(function(){try{applyDesktop()}catch(e){}}).observe(BODY,{childList:true});
+
+/* ---- 編集操作 ---- */
+function doAxd(a){
+ var act=a.getAttribute("data-axd"),id=a.getAttribute("data-id");
+ if(act==="edit"){if(!DS.editing)startEdit();return}
+ if(act==="reset"){
+  if(!DS.saved){
+   if(DS.editing){if(dirty()&&!confirm("編集中の変更を捨てて、初期状態に戻しますか?"))return;endEdit();toast("ホームを初期状態に戻しました")}
+   else toast("すでに初期状態です");
+   return;
+  }
+  resetAll();return;
+ }
+ if(!DS.editing||!DS.work)return;
+ var W=DS.work;
+ if(act==="save"){saveWork();return}
+ if(act==="revert"){DS.work=clone(DS.saved?norm(DS.saved):defLayout());refreshHome();toast("保存済みの配置に戻しました");return}
+ if(act==="prev"){if(!DS.prev){toast("ひとつ前の保存はありません");return}DS.work=clone(norm(DS.prev));refreshHome();toast("ひとつ前の配置を読み込みました。保存で確定します");return}
+ if(act==="addp"){DS.addOpen=!DS.addOpen;refreshHome();return}
+ if(act==="done"){
+  if(dirty()){if(confirm("変更を保存して終わりますか?\n(保存せずに捨てるときは「キャンセル」のあと「保存済みに戻す」)"))saveWork();else return}
+  endEdit();return;
+ }
+ var c=CM[id];if(!c)return;
+ if(act==="add"){
+  if(W.order.indexOf(id)<0){W.order.push(id);W.size[id]=c.def}
+  refreshHome();toast("「"+c.n+"」を追加しました");return;
+ }
+ var i=W.order.indexOf(id);if(i<0)return;
+ if(act==="rm"){
+  if(c.fixed){toast("「"+c.n+"」は削除できません");return}
+  W.order.splice(i,1);delete W.size[id];refreshHome();return;
+ }
+ if(act==="up"||act==="down"){
+  var j=i+(act==="up"?-1:1);if(j<0||j>=W.order.length)return;
+  W.order.splice(j,0,W.order.splice(i,1)[0]);refreshHome();return;
+ }
+ if(act==="sz+"||act==="sz-"){
+  var k=c.sz.indexOf(W.size[id]);if(k<0)k=c.sz.indexOf(c.def);
+  k=Math.max(0,Math.min(c.sz.length-1,k+(act==="sz+"?1:-1)));
+  W.size[id]=c.sz[k];
+  var w=a.closest(".axd-w");
+  if(w){w.setAttribute("data-sz",c.sz[k]);var lb=w.querySelector(".axd-sz");if(lb)lb.textContent=SZ[c.sz[k]]}
+  refreshBar();
+ }
+}
+function doAxp(a){
+ var act=a.getAttribute("data-axp");
+ if(act==="open")P.open();
+ else if(act==="sw"){switchP(a.getAttribute("data-id"))}
+}
+/* クリックは捕まえて処理する。編集中はホーム内のボタンを動かさない(誤操作防止) */
+ROOT.addEventListener("click",function(e){
+ var t=e.target;if(!t||!t.closest)return;
+ var a=t.closest("[data-axd],[data-axp]");
+ if(DS.editing&&t.closest(".hm")){
+  e.stopPropagation();e.preventDefault();
+  if(a&&a.hasAttribute("data-axd"))doAxd(a);
+  return;
+ }
+ if(!a)return;
+ e.stopPropagation();e.preventDefault();
+ if(a.hasAttribute("data-axd"))doAxd(a);else doAxp(a);
+},true);
+
+/* ---- ドラッグで並べ替え(タッチ・マウス共通) ---- */
+function dragPlace(){
+ var w=DR.w;w.style.transform="none";
+ var r=w.getBoundingClientRect();
+ w.style.transform="translate("+(DR.px-DR.gx-r.left)+"px,"+(DR.py-DR.gy-r.top)+"px)";
+}
+function dragHit(){
+ var now=Date.now();if(now<DR.cool)return;
+ var desk=DR.w.parentNode;if(!desk)return;
+ var all=Array.prototype.filter.call(desk.children,function(c){return c.classList.contains("axd-w")});
+ var i1=all.indexOf(DR.w);if(i1<0)return;
+ for(var i=0;i<all.length;i++){
+  var w2=all[i];if(w2===DR.w)continue;
+  var r=w2.getBoundingClientRect();
+  if(DR.px>=r.left&&DR.px<=r.right&&DR.py>=r.top&&DR.py<=r.bottom){
+   /* ドラッグ中の部品そのものはDOMで動かさない(動かすとタッチ/マウスの追跡が切れる)。まわりの部品を動かして順番を入れ替える */
+   var k;
+   if(i1<i){for(k=i1+1;k<=i;k++)desk.insertBefore(all[k],DR.w)}
+   else{var ref=DR.w.nextSibling;for(k=i;k<i1;k++)desk.insertBefore(all[k],ref)}
+   DR.cool=now+220;dragPlace();break;
+  }
+ }
+}
+function dragLoop(){
+ if(!DR)return;
+ var r=BODY.getBoundingClientRect(),dy=0;
+ if(DR.py<r.top+70)dy=-14;else if(DR.py>r.bottom-70)dy=14;
+ if(dy){var b=BODY.scrollTop;BODY.scrollTop=b+dy;if(BODY.scrollTop!==b){dragPlace();dragHit()}}
+ DR.raf=requestAnimationFrame(dragLoop);
+}
+function dragEnd(cancel){
+ if(!DR)return;
+ var d=DR;DR=null;
+ cancelAnimationFrame(d.raf);
+ try{document.removeEventListener("pointermove",d.mv,true);document.removeEventListener("pointerup",d.up,true);document.removeEventListener("pointercancel",d.up,true);d.grip.releasePointerCapture(d.pid)}catch(e){}
+ d.w.classList.remove("drag");d.w.style.transform="";
+ if(!cancel&&DS.work&&d.w.parentNode){
+  var ids=Array.prototype.filter.call(d.w.parentNode.children,function(c){return c.classList.contains("axd-w")}).map(function(c){return c.getAttribute("data-id")});
+  if(ids.length===DS.work.order.length)DS.work.order=ids;
+  refreshBar();
+ }
+}
+ROOT.addEventListener("pointerdown",function(e){
+ if(!DS.editing||(e.button!==undefined&&e.button>0)||DR)return;
+ var gr=e.target.closest&&e.target.closest(".axd-grip");if(!gr)return;
+ var w=gr.closest(".axd-w");if(!w)return;
+ e.preventDefault();
+ var r=w.getBoundingClientRect();
+ DR={w:w,grip:gr,pid:e.pointerId,gx:e.clientX-r.left,gy:e.clientY-r.top,px:e.clientX,py:e.clientY,cool:0,raf:0};
+ DR.mv=function(ev){if(!DR||ev.pointerId!==DR.pid)return;DR.px=ev.clientX;DR.py=ev.clientY;dragPlace();dragHit()};
+ DR.up=function(ev){if(DR&&ev.pointerId===DR.pid)dragEnd(false)};
+ try{gr.setPointerCapture(e.pointerId)}catch(x){}
+ document.addEventListener("pointermove",DR.mv,true);document.addEventListener("pointerup",DR.up,true);document.addEventListener("pointercancel",DR.up,true);
+ w.classList.add("drag");dragPlace();dragLoop();
+});
+ROOT.addEventListener("contextmenu",function(e){if(DS.editing&&e.target.closest&&e.target.closest(".axd-ctl"))e.preventDefault()});
+
+/* ---- 設定画面に入口カードを追加(既存の設定はそのまま) ---- */
+(function(){
+ var prev=X.V.SETTINGS;if(typeof prev!=="function")return;
+ X.V.SETTINGS=function(){
+  var h=prev.apply(this,arguments),a=activeP();
+  var card='<div class="axc" style="margin-bottom:10px"><h3>AXION PROFILE / DESKTOP</h3>'+
+   '<div class="axr"><span>プロフィール</span><b>'+(a?esc(a.name):(PF.list.length?"未選択":"未登録"))+'</b></div>'+
+   '<div class="axr"><span>ホームの配置</span><b>'+(DS.saved?"カスタム":"初期状態")+'</b></div>'+
+   '<button type="button" class="axb" data-axp="open">プロフィールを開く</button><button type="button" class="axb g" data-axd="edit">ホームを編集</button><button type="button" class="axb g" data-axd="reset">ホーム配置を初期化</button></div>';
+  return card+h;
+ };
+})();
+
+/* ---- 外部から使える窓口(確認・他機能との連携用) ---- */
+window.AXPROFILE={open:P_open,close:P_close,list:function(){return clone(PF)},active:function(){var a=activeP();return a?clone(a):null},switchTo:switchP,create:createP,capture:capture,apply:apply};
+window.AXDESKTOP={edit:startEdit,state:function(){return{saved:DS.saved?clone(DS.saved):null,prev:DS.prev?clone(DS.prev):null,editing:DS.editing}},catalog:function(){return clone(CAT)}};
+try{applyDesktop()}catch(e){}
+})();
+</script>
+
+<script id="axionAcctHello">
+/* AXION KEY のアカウント連携 + 起動後の「Hello 👋 ○○！」（追加分のみ・既存の処理は変更していません）
+   - キーで同じ名前のアカウントにログイン → ナビのプロフィール(AXION PROFILE)に同じ名前があれば、そのプロフィールに切り替える
+   - 起動画面(#bootScreen)が消えたあとに、Hello 👋 名前！ を表示する */
+(function(){
+  var SK='axionnavi.account', splashDone=false, queued=null, lastKeyAcct=null, seen={}, tm=0;
+  function g(f,d){try{var v=f();return(v===undefined||v===null)?d:v}catch(e){return d}}
+  function find(name){
+    var l=g(function(){return AXPROFILE.list().list},[]),n=String(name||'').trim().toLowerCase();
+    if(!n)return null;
+    for(var i=0;i<l.length;i++)if(String(l[i].name).trim().toLowerCase()===n)return l[i];
+    return null;
+  }
+  /* ---------- 見た目 ---------- */
+  var css='#axHello{position:fixed;inset:0;z-index:100000;background:#000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .6s}'+
+  '#axHello.on{opacity:1;pointer-events:auto}'+
+  '#axHello .line{display:flex;align-items:center;justify-content:center;gap:.12em;color:#fff;max-width:96vw;font-family:"Snell Roundhand","Segoe Script","Brush Script MT","Apple Chancery","Lucida Handwriting","Hiragino Maru Gothic ProN",cursive;font-size:min(13vw,84px);line-height:1;white-space:nowrap}'+
+  '#axHello .hello{font-style:italic;letter-spacing:.04em;opacity:0;transform:translateY(10px)}'+
+  '#axHello .hand{width:1em;height:1em;flex:none;transform-origin:60% 90%;opacity:0}'+
+  '#axHello .hand path{fill:none;stroke:#fff;stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round}'+
+  '#axHello .nm{font-weight:700;opacity:0;transform:scale(.8);max-width:46vw;overflow:hidden;text-overflow:ellipsis}'+
+  '#axHello .ex{opacity:0}'+
+  '#axHello.on .hello{animation:axhUp .6s .15s forwards}'+
+  '#axHello.on .hand{animation:axhUp .5s .55s forwards,axhWave 1.1s .9s ease-in-out 2}'+
+  '#axHello.on .nm{animation:axhPop .55s 1.0s cubic-bezier(.2,1.4,.4,1) forwards}'+
+  '#axHello.on .ex{animation:axhUp .4s 1.3s forwards}'+
+  '@keyframes axhUp{to{opacity:1;transform:none}}@keyframes axhPop{to{opacity:1;transform:scale(1)}}'+
+  '@keyframes axhWave{0%,100%{transform:rotate(0)}25%{transform:rotate(16deg)}75%{transform:rotate(-14deg)}}'+
+  '@media(prefers-reduced-motion:reduce){#axHello *{animation-duration:.01s!important;animation-delay:0s!important}}';
+  var HAND='<svg class="hand" viewBox="0 0 100 100" aria-hidden="true"><path d="M28 62C18 52 14 46 20 42C25 40 30 46 34 52M34 52V22C34 16 44 16 44 22V44M44 44L46 14C46 8 56 8 56 14V44M56 44L60 18C60 12 70 12 70 18L68 46M68 46L76 28C79 23 87 26 84 32L76 62C74 76 62 88 48 88C38 88 30 80 28 62"/></svg>';
+  function build(){
+    var d=document.getElementById('axHello');if(d)return d;
+    var st=document.createElement('style');st.textContent=css;document.head.appendChild(st);
+    d=document.createElement('div');d.id='axHello';d.setAttribute('role','status');
+    d.innerHTML='<div class="line"><span class="hello">Hello</span>'+HAND+'<span class="nm"></span><span class="ex">!</span></div>';
+    d.onclick=hide;document.body.appendChild(d);return d;
+  }
+  function hide(){var d=document.getElementById('axHello');if(d)d.classList.remove('on');clearTimeout(tm)}
+  function show(name){
+    var d=build();d.querySelector('.nm').textContent=name;
+    d.classList.remove('on');void d.offsetWidth;d.classList.add('on');
+    clearTimeout(tm);tm=setTimeout(hide,3800);
+  }
+  /* ---------- ログイン／ログアウト ---------- */
+  function login(p){
+    try{localStorage.setItem(SK,p.name)}catch(e){}
+    try{var a=AXPROFILE.active();if(!a||a.id!==p.id)AXPROFILE.switchTo(p.id)}catch(e){}   // 同じ名前のプロフィールに切り替え
+    if(splashDone)show(p.name);else queued=p.name;                                      // 起動画面の間は待つ
+  }
+  function logout(){try{localStorage.removeItem(SK)}catch(e){}queued=null;lastKeyAcct=null;hide()}
+  /* ---------- キーからのメッセージ ---------- */
+  function onKey(m){
+    if(!m||m.from!=='key')return;
+    if(m.mid){if(seen[m.mid])return;seen[m.mid]=1}
+    if(m.t==='logout'){logout();return}
+    var name=m.t==='login'?m.name:(m.t==='hello'?m.acct:null);
+    if(!name)return;
+    if(m.t==='hello'){if(name===lastKeyAcct)return;lastKeyAcct=name}   // hello は最初の1回だけ（ナビで手動切替した後に戻さない）
+    var p=find(name);
+    if(p)login(p);
+    if(m.t==='login'||m.t==='hello'){try{window.__akTx&&window.__akTx({t:'acct',name:name,found:!!p})}catch(e){}}
+  }
+  try{var bc=new BroadcastChannel('axion-key-link-v1');bc.onmessage=function(e){onKey(e.data)}}catch(e){}
+  window.addEventListener('storage',function(e){if(e.key==='axionKeyLink.msg'&&e.newValue){try{onKey(JSON.parse(e.newValue))}catch(x){}}});
+  var o=window.__akRx;window.__akRx=function(m){try{onKey(m)}catch(e){}return o?o.apply(this,arguments):undefined};   // 中継サーバー経由の分
+  /* ---------- 起動画面が消えたら ---------- */
+  function done(){
+    if(splashDone)return;splashDone=true;
+    var n=queued;if(!n){try{n=localStorage.getItem(SK)}catch(e){}}
+    queued=null;var p=n&&find(n);if(p)show(p.name);
+  }
+  var bs=document.getElementById('bootScreen');
+  if(!bs||bs.classList.contains('hidden'))done();
+  else{var mo=new MutationObserver(function(){if(bs.classList.contains('hidden')){mo.disconnect();done()}});mo.observe(bs,{attributes:true,attributeFilter:['class']})}
+  window.AxionHello={show:show,hide:hide};   // 確認用：AxionHello.show('名前')
+})();
+</script>
 </body>
 </html>
