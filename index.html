@@ -13530,6 +13530,7 @@ function illTollNear(p) {   // 次が料金所(有料道路に入る・名前に
     const pCtx = parkingCanvas.getContext('2d');
 
     function renderCameraView() {
+      try { camWheelSync(); } catch (e) { /* 無視 */ }
       if (window.APBACK && window.APBACK.on) return;
       const w = parkingCanvas.width = parkingCanvas.clientWidth;
       const h = parkingCanvas.height = parkingCanvas.clientHeight;
@@ -13542,21 +13543,7 @@ function illTollNear(p) {   // 次が料金所(有料道路に入る・名前に
       pCtx.globalAlpha = live ? 0.85 : 1;
 
       if (currentCameraView === 'rear') {
-        // 実車風: 左右に曲がるガイド線(手前=赤 → 黄 → 奥=緑)と、区切りの短い横線
-        const cols = ['#ef4444', '#eab308', '#22c55e'];
-        const sides = [[0.20, 0.92, 0.30, 0.62, 0.36, 0.40], [0.80, 0.92, 0.70, 0.62, 0.64, 0.40]];
-        sides.forEach((s, si) => {
-          const pt = t => { const u = 1 - t; return [w * (u * u * s[0] + 2 * u * t * s[2] + t * t * s[4]), h * (u * u * s[1] + 2 * u * t * s[3] + t * t * s[5])]; };
-          pCtx.lineWidth = 6; pCtx.lineCap = 'round';
-          for (let k = 0; k < 3; k++) {
-            pCtx.strokeStyle = cols[k]; pCtx.beginPath();
-            const t0 = k / 3, t1 = (k + 1) / 3, p0 = pt(t0); pCtx.moveTo(p0[0], p0[1]);
-            for (let i = 1; i <= 8; i++) { const p = pt(t0 + (t1 - t0) * i / 8); pCtx.lineTo(p[0], p[1]); }
-            pCtx.stroke();
-            const q = pt(t1), dir = si === 0 ? 1 : -1;                 // 区切りの短い横線(内側へ)
-            pCtx.lineWidth = 4; pCtx.beginPath(); pCtx.moveTo(q[0], q[1]); pCtx.lineTo(q[0] + dir * w * 0.045, q[1]); pCtx.stroke(); pCtx.lineWidth = 6;
-          }
-        });
+        camGuideDraw(pCtx, w, h);   // ハンドルの角度に合わせて曲がる予測線(手前=赤 → 黄 → 奥=緑)
       } else {
         pCtx.strokeStyle = 'var(--ac,#38bdf8)';
         pCtx.lineWidth = 4;
@@ -13571,6 +13558,93 @@ function illTollNear(p) {   // 次が料金所(有料道路に入る・名前に
         pCtx.lineTo(w * 0.7, h * 0.5);
         pCtx.stroke();
       }
+    }
+
+
+    /* ============ ふつうのバック画面: ハンドルをまわして、進む方向の予測線を動かす ============
+       左下のハンドルを指でまわす(右にまわすと右へ、左にまわすと左へ曲がる)。「戻す」かダブルタップで、まっすぐに戻る。 */
+    var CAMSTEER = { a: 0 };                                    // ハンドルの角度(度)。-540〜540
+    function camGuideDraw(c, w, h) {
+      const fa = CAMSTEER.a / 540 * 35 * Math.PI / 180, k = Math.tan(fa) / 2.7;     // ハンドル540°で、タイヤが35°切れる / ホイールベース2.7m
+      const Z0 = 1.2, HW = 0.9, cols = ['#ef4444', '#eab308', '#22c55e'], S0 = 1.2, S1 = 4.8;
+      const pos = (s, side) => {
+        const th = k * s; let X, Z;
+        if (Math.abs(k) < 1e-5) { X = 0; Z = s; } else { X = (1 - Math.cos(th)) / k; Z = Math.sin(th) / k; }
+        const xs = X + side * HW * Math.cos(th), zs = Z - side * HW * Math.sin(th);
+        if (zs < 0.7) return null;
+        const u = Z0 / zs; return [w / 2 + xs * 0.333 * w * u, h * (0.30 + 0.62 * u)];
+      };
+      c.lineCap = 'round'; c.lineJoin = 'round';
+      [-1, 1].forEach((side) => {
+        for (let b = 0; b < 3; b++) {
+          const sa = S0 + (S1 - S0) * b / 3, sb = S0 + (S1 - S0) * (b + 1) / 3;
+          c.strokeStyle = cols[b]; c.lineWidth = Math.max(3, w * 0.008); c.beginPath();
+          let first = true;
+          for (let i = 0; i <= 8; i++) {
+            const p = pos(sa + (sb - sa) * i / 8, side);
+            if (!p) { first = true; continue; }
+            if (first) { c.moveTo(p[0], p[1]); first = false; } else c.lineTo(p[0], p[1]);
+          }
+          c.stroke();
+          const q = pos(sb, side);                                // 区切りの短い横線(内側へ)
+          if (q) { c.lineWidth = Math.max(2, w * 0.0055); c.beginPath(); c.moveTo(q[0], q[1]); c.lineTo(q[0] - side * w * 0.045, q[1]); c.stroke(); }
+        }
+      });
+    }
+
+    /* 普通のバック: 上から見たアラウンドビューにも、ハンドルに合わせた予測線を出す(車の後ろから、曲がる方向へ) */
+    function avmGuideDraw(c, W, H, ch) {
+      if (currentCameraView === 'front' || (window.APBACK && window.APBACK.on)) return;
+      const ppm = ch / 4.05, k = Math.tan(CAMSTEER.a / 540 * 35 * Math.PI / 180) / 2.7;     // 1mあたりのピクセル数 / 曲がり具合
+      const rearY = (H + ch) / 2, axY = rearY - 0.8 * ppm, HW = 0.85, S0 = 0.8, S1 = 5.6, cols = ['#ef4444', '#eab308', '#22c55e'];
+      const pos = (s, side) => {
+        const th = k * s; let X, Z;
+        if (Math.abs(k) < 1e-5) { X = 0; Z = s; } else { X = (1 - Math.cos(th)) / k; Z = Math.sin(th) / k; }
+        return [W / 2 + (X + side * HW * Math.cos(th)) * ppm, axY + (Z - side * HW * Math.sin(th)) * ppm];
+      };
+      c.save(); c.lineCap = 'round'; c.lineJoin = 'round'; c.lineWidth = Math.max(3, W * 0.014);
+      [-1, 1].forEach((side) => {
+        for (let b = 0; b < 3; b++) {
+          const sa = S0 + (S1 - S0) * b / 3, sb = S0 + (S1 - S0) * (b + 1) / 3;
+          c.strokeStyle = cols[b]; c.beginPath();
+          for (let i = 0; i <= 8; i++) { const q = pos(sa + (sb - sa) * i / 8, side); if (i) c.lineTo(q[0], q[1]); else c.moveTo(q[0], q[1]); }
+          c.stroke();
+        }
+      });
+      c.restore();
+    }
+    function camWheelSync() {
+      let el = document.getElementById('camWheel');
+      if (!el) camWheelBuild();
+      el = document.getElementById('camWheel'); if (!el) return;
+      const show = currentCameraView !== 'front' && !(window.APBACK && window.APBACK.on);
+      el.style.display = show ? 'block' : 'none';
+      const rot = document.getElementById('camWheelRot'); if (rot) rot.style.transform = 'rotate(' + CAMSTEER.a + 'deg)';
+      const t = document.getElementById('camWheelTxt'), a = Math.round(CAMSTEER.a);
+      if (t) t.textContent = Math.abs(a) < 3 ? 'まっすぐ' : (a > 0 ? '右 ' : '左 ') + Math.abs(a) + '°';
+    }
+    function camWheelBuild() {
+      const host = parkingCanvas.parentElement; if (!host || document.getElementById('camWheel')) return;
+      const el = document.createElement('div'); el.id = 'camWheel';
+      el.style.cssText = 'position:absolute;left:14px;bottom:76px;z-index:12;text-align:center;touch-action:none;user-select:none;-webkit-user-select:none;display:none';
+      el.innerHTML = '<div id="camWheelDisc" style="width:clamp(86px,19vmin,124px);height:clamp(86px,19vmin,124px);border-radius:50%;background:rgba(0,0,0,.72);touch-action:none;cursor:grab">' +
+        '<svg id="camWheelRot" viewBox="0 0 100 100" style="width:100%;height:100%;transform-origin:50% 50%"><circle cx="50" cy="50" r="38" fill="none" stroke="#f1f5f9" stroke-width="7"/>' +
+        '<path d="M12 50H88M50 50V88" stroke="#f1f5f9" stroke-width="6" stroke-linecap="round" fill="none"/><path d="M50 12V24" stroke="#ef4444" stroke-width="7" stroke-linecap="round"/></svg></div>' +
+        '<div style="margin-top:3px;display:flex;gap:6px;align-items:center;justify-content:center"><span id="camWheelTxt" style="font-size:11px;font-weight:800;color:#e2e8f0;background:rgba(0,0,0,.72);padding:1px 8px;border-radius:8px">まっすぐ</span>' +
+        '<button id="camWheelReset" type="button" style="font-size:11px;font-weight:800;color:#e2e8f0;background:rgba(0,0,0,.72);padding:1px 8px;border-radius:8px;border:1px solid #475569">戻す</button></div>';
+      host.appendChild(el);
+      const disc = el.querySelector('#camWheelDisc');
+      let drag = false, last = 0, lastUp = 0;
+      const ang = (e) => { const r = disc.getBoundingClientRect(); return Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2)) * 180 / Math.PI; };
+      const redraw = () => { camWheelSync(); try { renderCameraView(); } catch (e) { /* 無視 */ } };
+      disc.addEventListener('pointerdown', (e) => { drag = true; try { disc.setPointerCapture(e.pointerId); } catch (x) { /* 無視 */ } last = ang(e); e.preventDefault(); });
+      disc.addEventListener('pointermove', (e) => {
+        if (!drag) return; const a = ang(e); let d = a - last; if (d > 180) d -= 360; if (d < -180) d += 360; last = a;
+        CAMSTEER.a = Math.max(-540, Math.min(540, CAMSTEER.a + d)); redraw(); e.preventDefault();
+      });
+      const up = () => { if (!drag) return; drag = false; const n = Date.now(); if (n - lastUp < 350) { CAMSTEER.a = 0; redraw(); } lastUp = n; };
+      disc.addEventListener('pointerup', up); disc.addEventListener('pointercancel', () => { drag = false; });
+      el.querySelector('#camWheelReset').addEventListener('click', () => { CAMSTEER.a = 0; redraw(); });
     }
 
 
@@ -13722,13 +13796,13 @@ function illTollNear(p) {   // 次が料金所(有料道路に入る・名前に
       if (lr) {                                                    // スマホを縦に立てて置くと、インカメが左・外カメが右を向く
         if (us) avmCover(ctx, us, 0, 0, W / 2, H);                 // 左: インカメの映像を、左半分いっぱいに貼る
         if (es) avmCover(ctx, es, W / 2, 0, W / 2, H);             // 右: 外カメの映像を、右半分いっぱいに貼る
-        if (car && car.naturalWidth) ctx.drawImage(car, (W - cw) / 2, (H - ch) / 2, cw, ch);
+        if (car && car.naturalWidth) ctx.drawImage(car, (W - cw) / 2, (H - ch) / 2, cw, ch); avmGuideDraw(ctx, W, H, ch);
         ctx.fillStyle = 'var(--tx1,#e2e8f0)'; ctx.fillText('左' + (us && !ul ? '(静止画)' : ''), W / 4, fs + 3); ctx.fillText('右' + (es && !el ? '(静止画)' : ''), W * 3 / 4, fs + 3);
         return;
       }
       if (es) avmCover(ctx, es, 0, 0, W, H / 2);                   // 外カメ(背面): 上端から車のちょうど真ん中まで、横いっぱいに貼る
       if (us) avmCover(ctx, us, 0, H / 2, W, H / 2);               // インカメ: 車の真ん中から下端まで、横いっぱいに貼る
-      if (car && car.naturalWidth) ctx.drawImage(car, (W - cw) / 2, (H - ch) / 2, cw, ch);
+      if (car && car.naturalWidth) ctx.drawImage(car, (W - cw) / 2, (H - ch) / 2, cw, ch); avmGuideDraw(ctx, W, H, ch);
       ctx.fillStyle = 'var(--tx1,#e2e8f0)'; ctx.fillText('前' + (es && !el ? '(静止画)' : ''), W / 2, fs + 3); ctx.fillText('後' + (us && !ul ? '(静止画)' : ''), W / 2, H - 6);
     }
     function avmLoop() {
@@ -15032,6 +15106,19 @@ if (walkModeOn()) return;   // 歩行者モードではカメラを使わない
         if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
         AVM_W = w; AVM_H = h;
       }
+      function guideAvm(g) {                                                  // 上から見た画面にも、バックカメラと同じ「進む線」を出す
+        const P = S.plan; if (!P || !(S.stage === 'A' || S.stage === 'pA' || S.stage === 'B' || S.stage === 'pB' || S.stage === 'C')) return;
+        g.save(); g.lineCap = 'round'; g.lineJoin = 'round'; g.lineWidth = 0.14; g.strokeStyle = '#fde047';
+        [-1, 1].forEach((side) => {
+          g.beginPath(); let first = true;
+          for (let s = S.s; s <= Math.min(P.total, S.s + 9) + 1e-6; s += 0.3) {
+            const u = poseAt(P, s), lx = -Math.sin(u.phi) * side * CAR_W / 2, ly = Math.cos(u.phi) * side * CAR_W / 2;
+            if (first) { g.moveTo(u.x + lx, u.y + ly); first = false; } else g.lineTo(u.x + lx, u.y + ly);
+          }
+          g.stroke();
+        });
+        g.restore();
+      }
       function drawCarIcon(g, q) {
         const c = CAR_LEN / 2 - REAR_OH, cx = q.x + Math.cos(q.phi) * c, cy = q.y + Math.sin(q.phi) * c;
         g.save(); g.translate(cx, cy); g.rotate(q.phi + PI / 2);
@@ -15239,8 +15326,8 @@ if (walkModeOn()) return;   // 歩行者モードではカメラを使わない
         g.fillStyle = 'rgba(var(--bg0-rgb,2,6,23),.78)'; g.fillRect((w - bw) / 2, h * 0.3, bw, bh); g.fillStyle = '#fde047';
         lines.forEach((t, i) => g.fillText(t, w / 2, h * 0.3 + 12 + fs * (1.05 + 1.35 * i)));
         const r = Math.min(w, h) * 0.085, cx = r + 16, cy = h - r - 16;                  // ハンドルの絵
-        g.save(); g.translate(cx, cy); g.fillStyle = 'rgba(var(--bg0-rgb,2,6,23),.7)'; g.beginPath(); g.arc(0, 0, r + 6, 0, 7); g.fill(); g.rotate(((S.wh || 0)) * PI / 180);
-        g.strokeStyle = 'var(--tx1,#e2e8f0)'; g.lineWidth = r * 0.16; g.beginPath(); g.arc(0, 0, r, 0, 7); g.stroke(); g.lineWidth = r * 0.14; g.beginPath(); g.moveTo(-r, 0); g.lineTo(r, 0); g.moveTo(0, 0); g.lineTo(0, r); g.stroke();
+        g.save(); g.translate(cx, cy); g.fillStyle = 'rgba(0,0,0,.72)'; g.beginPath(); g.arc(0, 0, r + 6, 0, 7); g.fill(); g.rotate(((S.wh || 0)) * PI / 180);
+        g.strokeStyle = '#f1f5f9'; g.lineWidth = r * 0.16; g.beginPath(); g.arc(0, 0, r, 0, 7); g.stroke(); g.lineWidth = r * 0.14; g.beginPath(); g.moveTo(-r, 0); g.lineTo(r, 0); g.moveTo(0, 0); g.lineTo(0, r); g.stroke();
         g.strokeStyle = '#ef4444'; g.beginPath(); g.moveTo(0, -r); g.lineTo(0, -r * 0.7); g.stroke(); g.restore();
         const dd = S.dist;                                               // 近づいたら、数字ではなく、下のほうがふわっと光る(赤=近い・黄=すこし近い・緑=何もなし)
         if (dd != null && dd < 2) {
@@ -15249,12 +15336,13 @@ if (walkModeOn()) return;   // 歩行者モードではカメラを使わない
           const sx = ((tt * (red ? 1.7 : 0.9)) % 1.5 - 0.25) * w, lg = g.createLinearGradient(sx - w * 0.28, 0, sx + w * 0.28, 0);
           lg.addColorStop(0, 'rgba(' + col + ',0)'); lg.addColorStop(0.5, 'rgba(' + col + ',.95)'); lg.addColorStop(1, 'rgba(' + col + ',0)'); g.fillStyle = lg; g.fillRect(0, h - 9, w, 5);
         }
+        const cw0 = $('camWheel'); if (cw0) cw0.style.display = 'none';
         const st = $('camStatusTag'); if (st) st.innerText = 'オートパーキング(デモ映像・3D)';
         const a = $('avmCanvas'); if (a) {
           const q = S.plan ? poseAt(S.plan, S.s) : { x: START.x, y: START.y, phi: START.phi }, c = CAR_LEN / 2 - REAR_OH, ag = a.getContext('2d');
           ag.setTransform(1, 0, 0, 1, 0, 0); ag.fillStyle = '#02060f'; ag.fillRect(0, 0, a.width, a.height);
           ag.save(); ag.translate(a.width / 2, a.height / 2); ag.rotate(-PI / 2 - q.phi); ag.scale(15, 15); ag.translate(-(q.x + Math.cos(q.phi) * c), -(q.y + Math.sin(q.phi) * c));
-          if (world) ag.drawImage(world, 0, 0, W_M, H_M); drawCarIcon(ag, q); ag.restore();
+          if (world) ag.drawImage(world, 0, 0, W_M, H_M); guideAvm(ag); drawCarIcon(ag, q); ag.restore();
         }
       }
 
@@ -21873,6 +21961,11 @@ try{applyDesktop()}catch(e){}
    - キーで同じ名前のアカウントにログイン → ナビのプロフィール(AXION PROFILE)に同じ名前があれば、そのプロフィールに切り替える
    - 起動画面(#bootScreen)が消えたあとに、Hello 👋 名前！ を表示する */
 (function(){
+  var WK='axionnavi.greetWord';                          // あいさつの言葉: 'hello' か 'welcome'
+  function word(){try{return localStorage.getItem(WK)==='welcome'?'Welcome':'Hello'}catch(e){return 'Hello'}}
+  /* 筆記体のフォント（Androidにはもともと筆記体が入っていないので、読み込む。オフラインのときは斜体の明朝/セリフで代用） */
+  try{var fl=document.createElement('link');fl.rel='stylesheet';fl.href='https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&display=swap';document.head.appendChild(fl);
+      if(document.fonts&&document.fonts.load)document.fonts.load('700 40px "Dancing Script"','Hello Welcome')}catch(e){}
   var SK='axionnavi.account', splashDone=false, queued=null, lastKeyAcct=null, seen={}, tm=0;
   function g(f,d){try{var v=f();return(v===undefined||v===null)?d:v}catch(e){return d}}
   function find(name){
@@ -21884,8 +21977,9 @@ try{applyDesktop()}catch(e){}
   /* ---------- 見た目 ---------- */
   var css='#axHello{position:fixed;inset:0;z-index:100000;background:#000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .6s}'+
   '#axHello.on{opacity:1;pointer-events:auto}'+
-  '#axHello .line{display:flex;align-items:center;justify-content:center;gap:.12em;color:#fff;max-width:96vw;font-family:"Snell Roundhand","Segoe Script","Brush Script MT","Apple Chancery","Lucida Handwriting","Hiragino Maru Gothic ProN",cursive;font-size:min(13vw,84px);line-height:1;white-space:nowrap}'+
-  '#axHello .hello{font-style:italic;letter-spacing:.04em;opacity:0;transform:translateY(10px)}'+
+  '#axHello .line{display:flex;align-items:center;justify-content:center;gap:.12em;color:#fff;max-width:96vw;font-family:"Dancing Script","Snell Roundhand","Segoe Script","Brush Script MT","Apple Chancery","Noto Serif","Hiragino Mincho ProN",Georgia,serif;font-size:min(13vw,84px);line-height:1;white-space:nowrap}'+
+  '#axHello .hello{font-style:italic;font-weight:700;letter-spacing:.04em;opacity:0;transform:translateY(10px)}'+
+  '#axHello.welcome .line{font-size:min(10.5vw,70px)}'+
   '#axHello .hand{width:1em;height:1em;flex:none;transform-origin:60% 90%;opacity:0}'+
   '#axHello .hand path{fill:none;stroke:#fff;stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round}'+
   '#axHello .nm{font-weight:700;opacity:0;transform:scale(.8);max-width:46vw;overflow:hidden;text-overflow:ellipsis}'+
@@ -21907,9 +22001,16 @@ try{applyDesktop()}catch(e){}
   }
   function hide(){var d=document.getElementById('axHello');if(d)d.classList.remove('on');clearTimeout(tm)}
   function show(name){
-    var d=build();d.querySelector('.nm').textContent=name;
-    d.classList.remove('on');void d.offsetWidth;d.classList.add('on');
-    clearTimeout(tm);tm=setTimeout(hide,3800);
+    var go=function(){
+      var d=build(),w=word();d.querySelector('.hello').textContent=w;d.classList.toggle('welcome',w==='Welcome');
+      d.querySelector('.nm').textContent=name;
+      d.classList.remove('on');void d.offsetWidth;d.classList.add('on');
+      clearTimeout(tm);tm=setTimeout(hide,3800);
+    };
+    try{  // フォントが読み込まれるまで最大1.2秒だけ待つ
+      if(document.fonts&&document.fonts.load){Promise.race([document.fonts.load('700 40px "Dancing Script"','Hello Welcome'),new Promise(function(r){setTimeout(r,1200)})]).then(go,go);return}
+    }catch(e){}
+    go();
   }
   /* ---------- ログイン／ログアウト ---------- */
   function login(p){
@@ -21942,6 +22043,24 @@ try{applyDesktop()}catch(e){}
   var bs=document.getElementById('bootScreen');
   if(!bs||bs.classList.contains('hidden'))done();
   else{var mo=new MutationObserver(function(){if(bs.classList.contains('hidden')){mo.disconnect();done()}});mo.observe(bs,{attributes:true,attributeFilter:['class']})}
+  /* ---------- 設定: あいさつを Hello / Welcome から選ぶ ---------- */
+  (function(){
+    var X=window.AXION&&window.AXION.ext;if(!X||!X.V||typeof X.V.SETTINGS!=='function')return;
+    var prev=X.V.SETTINGS;
+    X.V.SETTINGS=function(){
+      var h=prev.apply(this,arguments),w=word();
+      var card='<div class="axc" style="margin-bottom:10px"><h3>起動のあいさつ</h3><div class="axs">起動画面のあとに出る言葉を選べます</div><div class="axrow2">'+
+        ['Hello','Welcome'].map(function(k){return '<button type="button" class="axb'+(w===k?'':' g')+'" data-axgreet="'+k+'">'+k+'</button>'}).join('')+
+        '<button type="button" class="axb g" data-axgreet="preview">プレビュー</button></div></div>';
+      return card+h;
+    };
+    if(X.root)X.root.addEventListener('click',function(e){
+      var t=e.target.closest&&e.target.closest('[data-axgreet]');if(!t)return;var v=t.getAttribute('data-axgreet');
+      if(v==='preview'){var n=g(function(){return AXPROFILE.active().name},'')||(function(){try{return localStorage.getItem(SK)}catch(e){return ''}})()||'Aiko';show(n);return}
+      try{localStorage.setItem(WK,v.toLowerCase())}catch(x){}
+      try{X.render()}catch(x){}
+    });
+  })();
   window.AxionHello={show:show,hide:hide};   // 確認用：AxionHello.show('名前')
 })();
 </script>
